@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Group Standings - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .standings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+      gap: 2rem;
+      margin-top: 1.5rem;
+    }
+
+    @media (max-width: 992px) {
+      .standings-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .group-header {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.75rem 1rem;
+      border-radius: 8px 8px 0 0;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .group-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .standings-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .standings-table th {
+      padding: 0.75rem 0.5rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    .standings-table th.team-col,
+    .standings-table td.team-col {
+      text-align: left;
+      padding-left: 1rem;
+    }
+
+    .standings-table td {
+      padding: 0.85rem 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .standings-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .standings-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .rank-num {
+      font-weight: 600;
+      color: var(--text-muted);
+      width: 20px;
+      display: inline-block;
+      text-align: center;
+    }
+
+    /* Highlight top 2 advance slots */
+    .standings-table tbody tr:nth-child(1) .rank-num,
+    .standings-table tbody tr:nth-child(2) .rank-num {
+      color: var(--accent-green);
+    }
+
+    .team-cell {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .team-name {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .pts-val {
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .form-indicator {
+      display: inline-flex;
+      gap: 3px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .form-dot {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      font-size: 0.65rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-dark);
+    }
+
+    .form-w {
+      background-color: var(--accent-green);
+    }
+
+    .form-d {
+      background-color: var(--text-muted);
+    }
+
+    .form-l {
+      background-color: #ff5252;
+    }
+
+    .form-empty {
+      color: var(--text-muted);
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+
+<body class="bg-portal animate-fade-in">
+
+  <!-- Background Player Cutout -->
+  <div class="player-bg-left">
+    <img src="assets/neymar_cutout.png" alt="Neymar Background" style="opacity: 0.08;">
+  </div>
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link active" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">J</div>
+            <span class="profile-name">John Doe</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️
+              Settings</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div
+        style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 class="page-title" style="margin-bottom: 0.5rem;">Group Standings</h1>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Official FIFA World Cup 2026 group stage tables.</p>
+        </div>
+        <div style="font-size: 0.8rem; display: flex; gap: 15px; align-items: center; color: var(--text-muted);">
+          <span style="display: flex; align-items: center; gap: 6px;">
+            <span style="width: 10px; height: 10px; border-radius: 50%; background-color: var(--accent-green);"></span>
+            Top 2 Advance (Round of 32)
+          </span>
+        </div>
+      </div>
+
+      <div id="standingsContainer" class="standings-grid">
+        <!-- Dynamically loaded by app.js -->
+        <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; color: var(--text-muted);">
+          Loading standings...
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link active" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

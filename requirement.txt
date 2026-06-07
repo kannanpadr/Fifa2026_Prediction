@@ -1,0 +1,333 @@
+FIFA World Cup 2026 Prediction Portal – Requirement Specification
+Project Overview
+
+The FIFA World Cup 2026 Prediction Portal is a web-based application that allows football fans worldwide to predict match scores and compete with other users based on the accuracy of their predictions.
+
+The application will be accessible through the internet and support two types of users:
+
+Admin
+User
+
+The system will automatically calculate prediction points, generate rankings, and display leaderboards based on actual match results entered by the administrator.
+
+Technology Stack
+Frontend
+HTML5
+CSS3
+JavaScript (Vanilla JS)
+Backend
+
+Recommended:
+
+Node.js + Express.js
+
+Alternative:
+
+PHP / Python
+Database
+MySQL or PostgreSQL
+Hosting
+Cloud Hosting (AWS, Azure, DigitalOcean, Hostinger, etc.)
+Domain Name with SSL Certificate
+Application Pages
+
+The application will contain four main pages/modules.
+
+1. Login & Registration Page
+Features
+User Registration
+User Name
+Email Address
+Mobile Number
+Password
+Confirm Password
+User Login
+Email/User Name
+Password
+Admin Login
+Admin Username
+Password
+Validations
+Unique email address
+Password strength validation
+Required field validation
+Secure password storage (hashed passwords)
+2. World Cup Schedule Page
+Features
+
+Display all FIFA World Cup 2026 matches:
+
+Match Date
+Match Time
+Team 1
+Team 2
+Stadium
+Match Status
+Upcoming
+Live
+Completed
+Additional Features
+Filter by date
+Search by team
+Match countdown timer
+Match result display after completion
+3. Prediction Page
+Features
+
+Users can predict the score for each match.
+
+Example:
+
+Brazil vs Argentina
+
+Prediction:
+
+Brazil: 2
+Argentina: 1
+Prediction Rules
+Users can submit predictions only before the first match of the day starts.
+Once the first match of the day begins:
+All predictions for that day's matches become locked.
+Users can:
+Create prediction
+Edit prediction before deadline
+View submitted prediction
+Validation Rules
+Score must be numeric.
+Negative values are not allowed.
+Prediction deadline must be enforced automatically using JavaScript and server-side validation.
+4. Leaderboard / Ranking Page
+Features
+
+Display ranking table for all users.
+
+Columns:
+
+Rank
+User Name
+Total Points
+Correct Score Count
+Correct Winner Count
+Matches Predicted
+Leaderboard Views
+Top 10 Users
+
+Shows highest-ranked users.
+
+Full Ranking
+
+Shows all registered users.
+
+Dynamic Ranking
+
+Rankings should automatically update whenever match results are entered by the administrator.
+
+Admin Module
+Match Management
+
+Admin can:
+
+Add match schedule
+Edit match schedule
+Delete match schedule
+Update match status
+Result Management
+
+Admin can:
+
+Enter actual match scores
+Update completed match results
+
+Example:
+
+Brazil 3 - 1 Argentina
+
+Prediction Processing
+
+After entering actual results:
+
+System automatically:
+
+Compare all user predictions
+Calculate points
+Update user scores
+Regenerate leaderboard
+Update rankings
+
+No manual calculation required.
+
+Point Calculation Rules
+
+Example scoring model:
+
+Exact Score Prediction
+
+Prediction:
+Brazil 2 - 1 Argentina
+
+Actual:
+Brazil 2 - 1 Argentina
+
+Points: 5
+
+Correct Winner Prediction
+
+Prediction:
+Brazil 1 - 0 Argentina
+
+Actual:
+Brazil 3 - 1 Argentina
+
+Points: 3
+
+Correct Draw Prediction
+
+Prediction:
+1 - 1
+
+Actual:
+2 - 2
+
+Points: 3
+
+Wrong Prediction
+
+Points: 0
+
+The point values should be configurable by the administrator.
+
+Database Requirements
+Users Table
+
+Fields:
+
+UserID
+Name
+Email
+MobileNumber
+PasswordHash
+RegistrationDate
+Status
+Matches Table
+
+Fields:
+
+MatchID
+MatchDate
+MatchTime
+Team1
+Team2
+Stadium
+MatchStatus
+Team1Score
+Team2Score
+Predictions Table
+
+Fields:
+
+PredictionID
+UserID
+MatchID
+PredictedTeam1Score
+PredictedTeam2Score
+PredictionDateTime
+User Points Table
+
+Fields:
+
+PointID
+UserID
+MatchID
+PointsEarned
+Ranking Table
+
+Fields:
+
+RankID
+UserID
+TotalPoints
+CurrentRank
+Security Requirements
+Password encryption using bcrypt
+Session management
+JWT authentication (recommended)
+Input validation
+SQL injection protection
+XSS protection
+HTTPS support
+Hosting Requirements
+
+The application should be publicly accessible via the internet.
+
+Recommended deployment architecture:
+
+Frontend:
+
+HTML5/CSS3/JavaScript
+
+Backend API:
+
+Node.js + Express.js
+
+Database:
+
+MySQL
+
+Hosting:
+
+VPS / Cloud Server
+
+Domain:
+
+www.worldcupprediction2026.com
+
+SSL:
+
+HTTPS enabled
+Expected Workflow
+User registers and logs in.
+User views FIFA World Cup schedule.
+User predicts match scores before the daily deadline.
+Admin updates actual match results.
+System automatically calculates prediction points.
+Leaderboard is updated automatically.
+Users view rankings and compare scores with other participants.
+Future Enhancements
+Email notifications
+WhatsApp notifications
+Tournament winner prediction
+Knockout stage bracket prediction
+Country-wise rankings
+Mobile responsive design
+Progressive Web App (PWA)
+Multi-language support
+Social login (Google/Facebook)
+Deliverables
+Responsive Web Application
+Admin Dashboard
+User Dashboard
+Prediction Engine
+Automatic Point Calculation
+Dynamic Leaderboard
+MySQL Database Schema
+Hosting & Deployment Setup
+Security Implementation
+User Documentation
+
+
+worldcup-prediction/
+│
+├── frontend/
+│   ├── index.html
+│   ├── login.html
+│   ├── schedule.html
+│   ├── prediction.html
+│   └── leaderboard.html
+│
+├── backend/
+│   ├── server.js
+│   ├── routes/
+│   ├── controllers/
+│   └── models/
+│
+└── database/

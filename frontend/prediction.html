@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Predictions - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-prediction animate-fade-in">
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link active" id="navPredictions"><span>🗳️</span>
+                Predictions</a></li>
+            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">J</div>
+            <span class="profile-name">John Doe</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️
+              Settings</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2rem;">
+        <h1 class="page-title" style="margin-bottom: 0.5rem;">Predict Match Score</h1>
+        <p class="page-subtitle">Submit predictions before the daily deadline</p>
+      </div>
+
+      <div class="prediction-layout">
+
+        <!-- Left Column: Info, Countdown & Stats -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+          <!-- Info Box -->
+          <div class="glass-card">
+            <h3 class="card-title" style="font-size: 1.05rem;"><span>ℹ️</span> Prediction Info</h3>
+            <ul class="prediction-rules-list">
+              <li>You can submit/edit predictions before the first match of the day starts.</li>
+              <li>Once the first match of the day begins, all matches for that day become locked.</li>
+              <li>Points allocation:
+                <ul style="padding-left: 1rem; margin-top: 4px;">
+                  <li>Exact Score: <strong>5 pts</strong></li>
+                  <li>Correct Winner/Draw: <strong>3 pts</strong></li>
+                  <li>Incorrect: <strong>0 pts</strong></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Countdown Box -->
+          <div class="glass-card" style="text-align: center;">
+            <h3 class="card-title" style="font-size: 1.05rem; justify-content: center;"><span>⏳</span> Time Remaining
+            </h3>
+            <div class="countdown-container">
+              <div class="countdown-box">
+                <span class="countdown-number" id="countdownDays">00</span>
+                <span class="countdown-label">Days</span>
+              </div>
+              <div class="countdown-box">
+                <span class="countdown-number" id="countdownHours">12</span>
+                <span class="countdown-label">Hours</span>
+              </div>
+              <div class="countdown-box">
+                <span class="countdown-number" id="countdownMins">45</span>
+                <span class="countdown-label">Mins</span>
+              </div>
+              <div class="countdown-box">
+                <span class="countdown-number" id="countdownSecs">30</span>
+                <span class="countdown-label">Secs</span>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-muted);">Until next matches kick off</p>
+          </div>
+
+          <!-- Today's Stats -->
+          <div class="glass-card" style="display: flex; justify-content: space-around; padding: 1.25rem;">
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green);" id="statTotalMatches">3
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Upcoming</div>
+            </div>
+            <div style="border-right: 1px solid var(--border-color);"></div>
+            <div style="text-align: center;">
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green);" id="statUserPredicted">2
+              </div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Predicted</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Predict score cards -->
+        <div class="glass-card"
+          style="min-height: 400px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h2 class="card-title" style="margin-bottom: 1.5rem;"><span>⚽</span> Upcoming Fixtures</h2>
+
+            <form id="predictionsForm" class="prediction-form-card">
+              <div id="predictionMatchesContainer" class="prediction-form-card">
+                <!-- Loaded Dynamically by JS -->
+                <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                  Loading matches for prediction...
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div style="margin-top: 2rem;">
+            <button class="btn btn-primary btn-block btn-lg" type="button" id="submitPredictionsBtn">
+              SUBMIT PREDICTIONS
+            </button>
+            <div class="predict-footer-info">
+              You can edit your predictions before the daily deadline starts.
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link active" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

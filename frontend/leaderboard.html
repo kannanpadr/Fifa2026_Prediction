@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leaderboard - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-leaderboard animate-fade-in">
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="leaderboard.html" class="navbar-link active" id="navLeaderboard"><span>📊</span>
+                Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">J</div>
+            <span class="profile-name">John Doe</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️
+              Settings</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem;">
+        <div>
+          <h1 class="page-title" style="margin-bottom: 0.5rem;">Leaderboard</h1>
+          <p class="page-subtitle">Compete with friends and global fans</p>
+        </div>
+
+        <!-- Filter dropdown -->
+        <select id="leaderboardScope" class="select-filter" style="width: 150px;">
+          <option value="overall">Overall</option>
+          <option value="group">My Groups</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+
+      <div class="leaderboard-layout">
+
+        <!-- Left Column: Standings Table -->
+        <div class="glass-card" style="padding: 1.25rem 1.5rem;">
+          <h2 class="card-title" style="margin-bottom: 1.5rem;"><span>🏆</span> Top 10 Users</h2>
+
+          <div class="table-responsive">
+            <table class="portal-table">
+              <thead>
+                <tr>
+                  <th style="width: 8%;">Rank</th>
+                  <th style="width: 37%;">User</th>
+                  <th style="width: 15%;">Total Points</th>
+                  <th style="width: 12%; text-align: center;">Exact Score</th>
+                  <th style="width: 15%; text-align: center;">Correct Winner</th>
+                  <th style="width: 13%; text-align: center;">Matches Played</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboardTableBody">
+                <!-- Dynamically populated from JS -->
+                <tr>
+                  <td colspan="6" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                    Loading leaderboard rankings...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right Column: Golden Trophy showcase -->
+        <div class="glass-card trophy-container" style="min-height: 480px;">
+          <!-- Custom SVG Golden Trophy -->
+          <svg class="trophy-glow" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ffe066" />
+                <stop offset="50%" stop-color="#f5b041" />
+                <stop offset="100%" stop-color="#9a7d0a" />
+              </linearGradient>
+            </defs> <!-- Trophy cup body -->
+            <path d="M30 20 H70 V40 C70 52 62 62 50 62 C38 62 30 52 30 40 Z" fill="url(#goldGrad)" stroke="#f1c40f"
+              stroke-width="1.5" /> <!-- Handles -->
+            <path d="M22 25 C16 25 16 38 30 38" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"
+              stroke-linecap="round" />
+            <path d="M78 25 C84 25 84 38 70 38" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"
+              stroke-linecap="round" /> <!-- Stem -->
+            <path d="M47 62 H53 V80 H47 Z" fill="url(#goldGrad)" /> <!-- Base -->
+            <path d="M35 80 H65 V87 H35 Z" fill="#2c3e50" stroke="#f1c40f" stroke-width="1.5" />
+            <path d="M38 87 H62 V92 H38 Z" fill="#1a252f" /> <!-- Glow rings around -->
+            <ellipse cx="50" cy="90" rx="30" ry="6" fill="none" stroke="rgba(241, 196, 15, 0.3)" stroke-width="2"
+              stroke-dasharray="8,6" />
+          </svg>
+
+          <h3 class="trophy-title">Champion's Cup</h3>
+          <p class="trophy-desc">Earn points by making accurate predictions. Stand a chance to top the global rankings!
+          </p>
+        </div>
+
+      </div><svg class="trophy-glow" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffe066" />
+            <stop offset="50%" stop-color="#f5b041" />
+            <stop offset="100%" stop-color="#9a7d0a" />
+          </linearGradient>
+        </defs> <!-- Trophy cup body -->
+        <path d="M30 20 H70 V40 C70 52 62 62 50 62 C38 62 30 52 30 40 Z" fill="url(#goldGrad)" stroke="#f1c40f"
+          stroke-width="1.5" /> <!-- Handles -->
+        <path d="M22 25 C16 25 16 38 30 38" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"
+          stroke-linecap="round" />
+        <path d="M78 25 C84 25 84 38 70 38" fill="none" stroke="url(#goldGrad)" stroke-width="4.5"
+          stroke-linecap="round" /> <!-- Stem -->
+        <path d="M47 62 H53 V80 H47 Z" fill="url(#goldGrad)" /> <!-- Base -->
+        <path d="M35 80 H65 V87 H35 Z" fill="#2c3e50" stroke="#f1c40f" stroke-width="1.5" />
+        <path d="M38 87 H62 V92 H38 Z" fill="#1a252f" /> <!-- Glow rings around -->
+        <ellipse cx="50" cy="90" rx="30" ry="6" fill="none" stroke="rgba(241, 196, 15, 0.3)" stroke-width="2"
+          stroke-dasharray="8,6" />
+      </svg>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

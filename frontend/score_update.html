@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Score Update - FIFA World Cup 2026 Admin Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-prediction animate-fade-in">
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">A</div>
+            <span class="profile-name">Admin</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️
+              Settings</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2rem;">
+        <h1 class="page-title" style="margin-bottom: 0.5rem;">Score Update</h1>
+        <p class="page-subtitle">Admin dashboard to update scores and manage match statuses</p>
+      </div>
+
+      <div class="prediction-layout">
+
+        <!-- Left Column: Admin Info & Stats -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+          <!-- Instructions Box -->
+          <div class="glass-card">
+            <h3 class="card-title" style="font-size: 1.05rem;"><span>⚙️</span> Admin Panel</h3>
+            <ul class="prediction-rules-list">
+              <li>Manage real-time scores for all the Group Stage fixtures.</li>
+              <li>Statuses control user predictive flows:
+                <ul style="padding-left: 1rem; margin-top: 4px;">
+                  <li><strong>Upcoming</strong>: Open for prediction</li>
+                  <li><strong>Live</strong>: Scores updated dynamically (prediction closed)</li>
+                  <li><strong>Completed</strong>: Locked; results applied to leaderboards and standings</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Matches Status Stats -->
+          <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem;">
+            <h3 class="card-title" style="font-size: 1.05rem; margin-bottom: 0;"><span>📊</span> Match Summary</h3>
+            <div style="display: flex; justify-content: space-around; text-align: center; width: 100%;">
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-muted);" id="statUpcomingMatches">0
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Upcoming</div>
+              </div>
+              <div style="border-right: 1px solid var(--border-color);"></div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green);" id="statLiveMatches">0
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Live</div>
+              </div>
+              <div style="border-right: 1px solid var(--border-color);"></div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #ff5252;" id="statCompletedMatches">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Completed</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Match List Panel -->
+        <div class="glass-card"
+          style="min-height: 400px; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h2 class="card-title" style="margin-bottom: 1.5rem;"><span>⚽</span> Match Management</h2>
+
+            <div id="adminMatchesContainer" class="prediction-form-card">
+              <!-- Loaded Dynamically by JS -->
+              <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                Loading matches...
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

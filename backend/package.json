@@ -1,0 +1,15 @@
+{
+  "name": "worldcup-prediction",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "mongodb": "^7.2.0",
+    "mongoose": "^9.6.3"
+  }
+}

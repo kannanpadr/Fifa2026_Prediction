@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-portal animate-fade-in">
+
+  <!-- Background Player Cutout -->
+  <div class="player-bg-left">
+    <img src="assets/neymar_cutout.png" alt="neymar Background">
+  </div>
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link active" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">J</div>
+            <span class="profile-name">John Doe</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️
+              Settings</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2rem;">
+        <h1 class="page-title" id="welcomeText" style="margin-bottom: 0.5rem;">Welcome Back, John Doe!</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Track your performance, check schedules, and make
+          predictions.</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="dashboard-grid">
+
+        <div class="glass-card stats-card">
+          <div class="stats-icon">🏆</div>
+          <div class="stats-info">
+            <span class="stats-value" id="statUserRank"># -</span>
+            <span class="stats-label">Your Current Rank</span>
+          </div>
+        </div>
+
+        <div class="glass-card stats-card">
+          <div class="stats-icon">⚡</div>
+          <div class="stats-info">
+            <span class="stats-value" id="statUserPoints">0</span>
+            <span class="stats-label">Total Points</span>
+          </div>
+        </div>
+
+        <div class="glass-card stats-card">
+          <div class="stats-icon">🎯</div>
+          <div class="stats-info">
+            <span class="stats-value" id="statUserExact">0</span>
+            <span class="stats-label">Exact Scores</span>
+          </div>
+        </div>
+
+        <div class="glass-card stats-card">
+          <div class="stats-icon">🗳️</div>
+          <div class="stats-info">
+            <span class="stats-value" id="statPredictedMatches">0 / 0</span>
+            <span class="stats-label">Matches Predicted</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Dashboard Sections split -->
+      <div class="dashboard-sections">
+
+        <!-- Left Section: Predictions list -->
+        <div class="glass-card">
+          <h2 class="card-title"><span>🔥</span> Next Fixtures to Predict</h2>
+          <div id="dashboardPredictList" style="margin-top: 1.5rem;">
+            <!-- Rendered by JS -->
+            <div style="text-align: center; padding: 2rem;">Loading upcoming fixtures...</div>
+          </div>
+        </div>
+
+        <!-- Right Section: Leaderboard summary preview -->
+        <div class="glass-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <h2 class="card-title"><span>📊</span> Leaderboard Preview</h2>
+
+            <div style="margin-top: 1.5rem;" id="dashboardLeaderboardPreview">
+              <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading standings...</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 2rem;">
+            <a href="leaderboard.html" class="btn btn-primary btn-block">View Full Standings</a>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

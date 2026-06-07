@@ -3,7 +3,7 @@ const path = require('path');
 const app = express();
 
 const dotenv = require('dotenv');
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');

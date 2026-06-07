@@ -1217,6 +1217,31 @@ input, select, button, textarea {
   transform: scale(0.97) !important;
 }
 
+/* Mobile Login Header (Visible on Mobile only) */
+.mobile-login-header {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.mobile-login-logo {
+  max-width: 130px;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 5px 15px rgba(0, 230, 118, 0.25));
+}
+
+.mobile-login-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: 0.5px;
+  color: var(--accent-green);
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
 /* Responsive Breakpoints */
 @media (max-width: 1024px) {
   .dashboard-grid {
@@ -1291,6 +1316,10 @@ input, select, button, textarea {
   
   .login-art-panel {
     display: none;
+  }
+
+  .mobile-login-header {
+    display: flex;
   }
   
   .login-form-panel {

@@ -41,7 +41,7 @@ async function seedAdmin() {
 app.use(express.json());
 
 // Serve static frontend files
-app.use(express.static(path.join(__dirname, '../frontend')));
+app.use(express.static(path.join(__dirname, './frontend')));
 
 // Import models
 const Match = require('./models/Match');

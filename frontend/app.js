@@ -151,6 +151,63 @@ function initLoginPage() {
     return;
   }
 
+  // Tab Switcher Logic
+  const tabUser = document.getElementById('tabUser');
+  const tabAdmin = document.getElementById('tabAdmin');
+  const usernameLabel = document.getElementById('usernameLabel');
+  const usernameInput = document.getElementById('username');
+  const usernameIcon = document.getElementById('usernameIcon');
+  const passwordLabel = document.getElementById('passwordLabel');
+  const signupPrompt = document.getElementById('signupPrompt');
+  const adminHelperText = document.getElementById('adminHelperText');
+  const loginError = document.getElementById('loginError');
+
+  let activeRole = 'user'; // 'user' or 'admin'
+
+  if (tabUser && tabAdmin) {
+    tabUser.addEventListener('click', () => {
+      if (activeRole === 'user') return;
+      activeRole = 'user';
+      tabUser.classList.add('active');
+      tabAdmin.classList.remove('active');
+      
+      // Update UI for User Mode
+      if (usernameLabel) usernameLabel.textContent = 'Mobile number';
+      if (usernameInput) {
+        usernameInput.placeholder = 'Enter mobile number';
+        usernameInput.type = 'text';
+        usernameInput.value = '';
+      }
+      if (usernameIcon) usernameIcon.textContent = '👤';
+      if (passwordLabel) passwordLabel.textContent = 'Password';
+      if (signupPrompt) signupPrompt.style.display = 'block';
+      if (adminHelperText) adminHelperText.style.display = 'none';
+      if (loginError) loginError.textContent = '';
+      passwordInput.value = '';
+    });
+
+    tabAdmin.addEventListener('click', () => {
+      if (activeRole === 'admin') return;
+      activeRole = 'admin';
+      tabAdmin.classList.add('active');
+      tabUser.classList.remove('active');
+      
+      // Update UI for Admin Mode
+      if (usernameLabel) usernameLabel.textContent = 'Admin Username / Phone';
+      if (usernameInput) {
+        usernameInput.placeholder = 'Enter admin username';
+        usernameInput.type = 'text';
+        usernameInput.value = '';
+      }
+      if (usernameIcon) usernameIcon.textContent = '🛡️';
+      if (passwordLabel) passwordLabel.textContent = 'PIN / Password';
+      if (signupPrompt) signupPrompt.style.display = 'none';
+      if (adminHelperText) adminHelperText.style.display = 'block';
+      if (loginError) loginError.textContent = '';
+      passwordInput.value = '';
+    });
+  }
+
   // Toggle Forms
   if (toRegisterLink && loginForm && registerForm) {
     toRegisterLink.addEventListener('click', (e) => {

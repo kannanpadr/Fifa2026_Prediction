@@ -10,8 +10,33 @@ const bcrypt = require('bcryptjs');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
+  .then(async () => {
+    console.log('✅ Connected to MongoDB');
+    await seedAdmin();
+  })
   .catch(err => console.error('❌ MongoDB connection error:', err));
+
+async function seedAdmin() {
+  try {
+    const adminExists = await User.findOne({ role: 'admin' });
+    if (!adminExists) {
+      console.log('🌱 No admin user found. Seeding default admin user...');
+      const pinHash = await bcrypt.hash('123456', 10);
+      const defaultAdmin = new User({
+        username: 'admin',
+        phone: '9999999999',
+        pinHash: pinHash,
+        role: 'admin'
+      });
+      await defaultAdmin.save();
+      console.log('✅ Default admin user created. Username: admin, PIN: 123456');
+    } else {
+      console.log('ℹ️ Admin user already exists.');
+    }
+  } catch (err) {
+    console.error('❌ Error seeding admin user:', err);
+  }
+}
 
 app.use(express.json());
 

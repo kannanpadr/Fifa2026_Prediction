@@ -1084,6 +1084,11 @@ h1.page-title {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeInOpacityOnly {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes pulseRed {
   0% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.4); opacity: 0.4; }
@@ -1098,6 +1103,10 @@ h1.page-title {
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
+}
+
+body.animate-fade-in {
+  animation: fadeInOpacityOnly 0.4s ease-out forwards;
 }
 
 /* Background Player Cutouts */
@@ -1144,10 +1153,31 @@ h1.page-title {
   }
 }
 
-/* Hide background players on mobile and tablet to preserve layout space */
+/* Keep background players visible and centered on mobile and tablet screens */
 @media (max-width: 1024px) {
   .player-bg-left, .player-bg-right {
-    display: none !important;
+    display: flex !important;
+    width: 50vw;
+    height: 80vh;
+    top: 10vh;
+    bottom: auto;
+    align-items: center;
+  }
+  
+  .player-bg-left {
+    left: 0;
+    right: auto;
+    justify-content: center;
+  }
+
+  .player-bg-right {
+    right: 0;
+    left: auto;
+    justify-content: center;
+  }
+  
+  .player-bg-left img, .player-bg-right img {
+    opacity: 0.3; /* Lower opacity for mobile readability since they overlap with text */
   }
 }
 

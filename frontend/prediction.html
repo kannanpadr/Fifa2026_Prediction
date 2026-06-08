@@ -60,7 +60,7 @@
 
       <div style="margin-bottom: 2rem;">
         <h1 class="page-title" style="margin-bottom: 0.5rem;">Predict Match Score</h1><br>
-        <p class="page-subtitle">Submit predictions before the daily deadline</p>
+        <p class="page-subtitle">Submit predictions before each match starts</p>
       </div>
 
       <div class="prediction-layout">
@@ -72,8 +72,11 @@
           <div class="glass-card">
             <h3 class="card-title" style="font-size: 1.05rem;"><span>ℹ️</span> Prediction Info</h3>
             <ul class="prediction-rules-list">
-              <li>You can submit/edit predictions before the first match of the day starts.</li>
-              <li>Once the first match of the day begins, all matches for that day become locked.</li>
+              <li>Users may submit or edit predictions for any open match until its scheduled start time.</li>
+              <li>Once a match starts, predictions for that match are automatically locked and can no longer be modified.</li>
+              <li>Predictions remain available for other matches that have not yet started.</li>
+              <li>Points are awarded based on the prediction results after the admin updates the final match score.</li>
+              <li>Leaderboard standings are updated once prediction points have been applied.</li>
               <li>Points allocation:
                 <ul style="padding-left: 1rem; margin-top: 4px;">
                   <li>Exact Score: <strong>5 pts</strong></li>
@@ -147,7 +150,7 @@
               SUBMIT PREDICTIONS
             </button>
             <div class="predict-footer-info">
-              You can edit your predictions before the daily deadline starts.
+              Predictions for each match lock individually at its kickoff time.
             </div>
           </div>
         </div>

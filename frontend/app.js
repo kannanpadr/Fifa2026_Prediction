@@ -363,6 +363,12 @@ async function initDashboardPage() {
           const hasPred = !!userPred;
           const predLabel = hasPred ? `${userPred.team1Score} - ${userPred.team2Score}` : 'Not Predicted';
 
+          // Calculate 24-hour prediction window for this match
+          const kickoff = new Date(match.date + ' ' + match.time + ' GMT+0530').getTime();
+          const now = new Date().getTime();
+          const isOpen = (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+          const isClosed = now >= kickoff;
+
           const card = document.createElement('div');
           card.className = 'glass-card interactive-hover';
           card.style.padding = '1.25rem';
@@ -381,9 +387,15 @@ async function initDashboardPage() {
               </span>
             </div>
             <div style="display:flex; justify-content:flex-end;">
-              <a href="prediction.html" class="btn btn-outline-green" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
-                ${hasPred ? 'Edit Prediction' : 'Predict Now'}
-              </a>
+              ${isOpen ? `
+                <a href="prediction.html" class="btn btn-outline-green" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
+                  ${hasPred ? 'Edit Prediction' : 'Predict Now'}
+                </a>
+              ` : `
+                <button class="btn btn-outline" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;" disabled>
+                  ${isClosed ? 'Closed' : 'Not Open'}
+                </button>
+              `}
             </div>
           `;
           dashboardPredictList.appendChild(card);
@@ -506,11 +518,17 @@ async function initSchedulePage() {
         scoreOrVS = `<span style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 800; background:rgba(255,255,255,0.06); padding:4px 10px; border-radius:6px; letter-spacing: 2px;">${match.team1Score} - ${match.team2Score}</span>`;
       }
 
+      // Find kickoff time and check 24-hour prediction window
+      const kickoff = new Date(match.date + ' ' + match.time + ' GMT+0530').getTime();
+      const now = new Date().getTime();
+      const isOpen = (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+      const isClosed = now >= kickoff;
+ 
       let actionHTML = '';
-      if (match.status === 'Upcoming') {
+      if (match.status === 'Upcoming' && isOpen) {
         actionHTML = `<a href="prediction.html" class="btn btn-outline-green" style="padding: 0.4rem 0.8rem; font-size:0.75rem;">Predict</a>`;
       } else {
-        actionHTML = `<button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size:0.75rem;" disabled>Closed</button>`;
+        actionHTML = `<button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size:0.75rem;" disabled>${isClosed ? 'Closed' : 'Not Open'}</button>`;
       }
 
       // Flag icons generator
@@ -569,8 +587,8 @@ async function initPredictionPage() {
   let pagePredictions = {};
 
   // Countdown timer logic
-  // Let's count down to 11 June 2026 01:00 AM (First match of the World Cup)
-  const targetDate = new Date('Jun 11, 2026 01:00:00 GMT-0600').getTime();
+  // Let's count down to the first match of the World Cup in IST
+  const targetDate = new Date('Jun 07, 2026 10:00:00 GMT+0530').getTime();
 
   function updateCountdown() {
     const now = new Date().getTime();
@@ -611,16 +629,45 @@ async function initPredictionPage() {
     const activeDate = getEarliestActiveDate(matches);
     const upcomingMatches = matches.filter(m => m.status === 'Upcoming' && m.date === activeDate);
 
+    // Calculate if any match is open for prediction within its 24h window
+    const now = new Date().getTime();
+    const anyOpen = upcomingMatches.some(m => {
+      const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
+      return (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+    });
+ 
     // Update page subtitle to show active date
     const pageSubtitle = document.querySelector('.page-subtitle');
     if (pageSubtitle && activeDate) {
-      pageSubtitle.textContent = `Active Matchday: ${activeDate} (Submit predictions before matches kick off)`;
+      if (anyOpen) {
+        pageSubtitle.textContent = `Active Matchday: ${activeDate} (Enter predictions for open matches)`;
+        pageSubtitle.style.color = '';
+      } else {
+        pageSubtitle.textContent = `Active Matchday: ${activeDate} (No matches currently open for prediction)`;
+        pageSubtitle.style.color = '#ff5252';
+      }
     }
-
+ 
+    // Disable main submit button if no matches are open
+    const submitPredictionsBtn = document.getElementById('submitPredictionsBtn');
+    if (submitPredictionsBtn) {
+      if (!anyOpen) {
+        submitPredictionsBtn.disabled = true;
+        submitPredictionsBtn.textContent = 'PREDICTIONS LOCKED (OUTSIDE WINDOW)';
+        submitPredictionsBtn.style.opacity = '0.6';
+        submitPredictionsBtn.style.cursor = 'not-allowed';
+      } else {
+        submitPredictionsBtn.disabled = false;
+        submitPredictionsBtn.textContent = 'SUBMIT PREDICTIONS';
+        submitPredictionsBtn.style.opacity = '';
+        submitPredictionsBtn.style.cursor = '';
+      }
+    }
+ 
     // Set statistics
     const totalTodayMatchesEl = document.getElementById('statTotalMatches');
     const userPredictedMatchesEl = document.getElementById('statUserPredicted');
-
+ 
     if (totalTodayMatchesEl) totalTodayMatchesEl.textContent = upcomingMatches.length;
     
     // Count predictions for currently displayed active matches
@@ -629,13 +676,13 @@ async function initPredictionPage() {
       if (pagePredictions[m.id]) predictedCountForActiveDate++;
     });
     if (userPredictedMatchesEl) userPredictedMatchesEl.textContent = predictedCountForActiveDate;
-
-    renderPredictCards(upcomingMatches);
+ 
+    renderPredictCards(upcomingMatches, now);
   } catch (err) {
     console.error('Failed to load predictions page:', err);
   }
 
-  function renderPredictCards(upcomingList) {
+  function renderPredictCards(upcomingList, now) {
     if (!predictionMatchesContainer) return;
     predictionMatchesContainer.innerHTML = '';
 
@@ -655,35 +702,56 @@ async function initPredictionPage() {
       const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;
       const flag2Url = `https://flagcdn.com/24x18/${match.team2Code}.png`;
 
+      // Calculate state for this specific match
+      const kickoff = new Date(match.date + ' ' + match.time + ' GMT+0530').getTime();
+      const isOpen = (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+      const isClosed = now >= kickoff;
+      const isNotOpenYet = now < kickoff - 24 * 60 * 60 * 1000;
+ 
+      const isDisabled = isOpen ? '' : 'disabled';
+ 
+      // Visual badge
+      let badgeHTML = '';
+      if (isOpen) {
+        badgeHTML = `<span class="badge" style="background-color: var(--accent-green); color: black; font-weight: 700; padding: 2px 8px; border-radius: 4px;">Open</span>`;
+      } else if (isClosed) {
+        badgeHTML = `<span class="badge" style="background-color: #ff5252; color: white; font-weight: 700; padding: 2px 8px; border-radius: 4px;">Closed</span>`;
+      } else if (isNotOpenYet) {
+        badgeHTML = `<span class="badge" style="background-color: #555; color: #ccc; font-weight: 700; padding: 2px 8px; border-radius: 4px;">Not Open</span>`;
+      }
+ 
       const card = document.createElement('div');
       card.className = 'match-predict-card';
       card.innerHTML = `
-        <div class="predict-header">
+        <div class="predict-header" style="display: flex; justify-content: space-between; align-items: center;">
           <span>Group ${match.group} • ${match.venue}</span>
-          <span>Deadline: ${match.date} | ${match.time}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>Deadline: ${match.date} | ${match.time}</span>
+            ${badgeHTML}
+          </div>
         </div>
         <div class="predict-body">
           <div class="predict-team">
             <img class="flag-icon" src="${flag1Url}" alt="${match.team1}">
             <span class="predict-team-name">${match.team1}</span>
           </div>
-
+ 
           <div class="predict-inputs">
             <div class="score-stepper">
-              <button class="stepper-btn dec" data-match-id="${match.id}" data-team="1" type="button">-</button>
-              <input class="score-input" data-match-id="${match.id}" data-team="1" type="number" min="0" value="${pred.team1Score}">
-              <button class="stepper-btn inc" data-match-id="${match.id}" data-team="1" type="button">+</button>
+              <button class="stepper-btn dec" data-match-id="${match.id}" data-team="1" type="button" ${isDisabled}>-</button>
+              <input class="score-input" data-match-id="${match.id}" data-team="1" type="number" min="0" value="${pred.team1Score}" ${isDisabled}>
+              <button class="stepper-btn inc" data-match-id="${match.id}" data-team="1" type="button" ${isDisabled}>+</button>
             </div>
             
             <span class="predict-vs-text">VS</span>
             
             <div class="score-stepper">
-              <button class="stepper-btn dec" data-match-id="${match.id}" data-team="2" type="button">-</button>
-              <input class="score-input" data-match-id="${match.id}" data-team="2" type="number" min="0" value="${pred.team2Score}">
-              <button class="stepper-btn inc" data-match-id="${match.id}" data-team="2" type="button">+</button>
+              <button class="stepper-btn dec" data-match-id="${match.id}" data-team="2" type="button" ${isDisabled}>-</button>
+              <input class="score-input" data-match-id="${match.id}" data-team="2" type="number" min="0" value="${pred.team2Score}" ${isDisabled}>
+              <button class="stepper-btn inc" data-match-id="${match.id}" data-team="2" type="button" ${isDisabled}>+</button>
             </div>
           </div>
-
+ 
           <div class="predict-team team-right">
             <img class="flag-icon" src="${flag2Url}" alt="${match.team2}">
             <span class="predict-team-name">${match.team2}</span>
@@ -900,8 +968,25 @@ async function initStandingsPage() {
   }
 }
 function getEarliestActiveDate(matches) {
-  const activeMatches = matches.filter(m => m.status === 'Upcoming' || m.status === 'Live');
-  if (activeMatches.length === 0) return null;
+  const now = new Date().getTime();
+  const activeMatches = matches.filter(m => {
+    const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
+    return (m.status === 'Upcoming' || m.status === 'Live') && (now < kickoff);
+  });
+
+  if (activeMatches.length === 0) {
+    if (matches.length === 0) return null;
+    let latestTime = 0;
+    let latestDateStr = null;
+    matches.forEach(m => {
+      const time = new Date(m.date).getTime();
+      if (time > latestTime) {
+        latestTime = time;
+        latestDateStr = m.date;
+      }
+    });
+    return latestDateStr;
+  }
 
   let earliestTime = Infinity;
   let earliestDateStr = null;

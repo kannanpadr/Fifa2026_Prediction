@@ -149,39 +149,65 @@ app.post('/api/predictions', async (req, res) => {
   try {
     const allMatches = await Match.find();
     
-    // Find the earliest date with uncompleted matches (Upcoming or Live)
-    const activeMatches = allMatches.filter(m => m.status === 'Upcoming' || m.status === 'Live');
-    let earliestDateStr = null;
-    let earliestTime = Infinity;
-
-    activeMatches.forEach(m => {
-      const time = new Date(m.date).getTime();
-      if (time < earliestTime) {
-        earliestTime = time;
-        earliestDateStr = m.date;
-      }
+    const now = new Date().getTime();
+    
+    // Find active matches that have not started yet
+    const activeMatches = allMatches.filter(m => {
+      const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
+      return (m.status === 'Upcoming' || m.status === 'Live') && (now < kickoff);
     });
 
-    // Allowed matches to predict must match this earliest active date and have status 'Upcoming'
-    const allowedMatchIds = new Set(
-      allMatches
-        .filter(m => m.date === earliestDateStr && m.status === 'Upcoming')
-        .map(m => m.id)
-    );
+    let earliestDateStr = null;
+    if (activeMatches.length > 0) {
+      let earliestTime = Infinity;
+      activeMatches.forEach(m => {
+        const time = new Date(m.date).getTime();
+        if (time < earliestTime) {
+          earliestTime = time;
+          earliestDateStr = m.date;
+        }
+      });
+    } else {
+      // Fallback: if all matches are in the past, return the date of the latest match
+      let latestTime = 0;
+      allMatches.forEach(m => {
+        const time = new Date(m.date).getTime();
+        if (time > latestTime) {
+          latestTime = time;
+          earliestDateStr = m.date;
+        }
+      });
+    }
 
     const ops = [];
-    Object.entries(predictions).forEach(([matchIdStr, scores]) => {
+
+    for (const [matchIdStr, scores] of Object.entries(predictions)) {
       const matchId = parseInt(matchIdStr);
-      if (allowedMatchIds.has(matchId)) {
-        ops.push({
-          updateOne: {
-            filter: { username: username.trim(), matchId: matchId },
-            update: { team1Score: parseInt(scores.team1Score), team2Score: parseInt(scores.team2Score) },
-            upsert: true
-          }
-        });
+      const match = allMatches.find(m => m.id === matchId);
+      if (!match) continue;
+
+      // Only allow prediction if status is 'Upcoming' and the date matches the earliest active matchday date
+      if (match.date !== earliestDateStr || match.status !== 'Upcoming') {
+        continue;
       }
-    });
+
+      // Calculate 24-hour prediction window for this specific match
+      const kickoff = new Date(match.date + ' ' + match.time + ' GMT+0530').getTime();
+      const openTime = kickoff - 24 * 60 * 60 * 1000;
+
+      // Skip predictions that are outside the allowed window (not open yet, or deadline passed)
+      if (now < openTime || now >= kickoff) {
+        continue;
+      }
+
+      ops.push({
+        updateOne: {
+          filter: { username: username.trim(), matchId: matchId },
+          update: { team1Score: parseInt(scores.team1Score), team2Score: parseInt(scores.team2Score) },
+          upsert: true
+        }
+      });
+    }
 
     if (ops.length) {
       await Prediction.bulkWrite(ops);

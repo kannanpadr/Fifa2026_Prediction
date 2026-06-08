@@ -1274,8 +1274,68 @@ async function initGamesPage() {
     `;
     grid.appendChild(gameCard);
 
-    // Limit to only fill the first row (at most 2 matches to make 3 items total)
-    const firstRowMatches = matchesList.slice(0, 2);
+    // Penalty Shootout Promo Tile
+    const penaltyCard = document.createElement('div');
+    penaltyCard.className = 'glass-card interactive-hover';
+    penaltyCard.style.padding = '1.75rem';
+    penaltyCard.style.cursor = 'pointer';
+    penaltyCard.style.border = '1px dashed var(--accent-green)';
+    penaltyCard.style.display = 'flex';
+    penaltyCard.style.flexDirection = 'column';
+    penaltyCard.style.justifyContent = 'space-between';
+    penaltyCard.addEventListener('click', () => {
+      window.location.href = 'penalty.html';
+    });
+    penaltyCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 Penalty Shootout</span>
+        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🎯</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Penalty Challenge</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Beat the keeper in a 5-shot penalty shootout!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
+        Click to play this game for fun!
+      </div>
+    `;
+    grid.appendChild(penaltyCard);
+
+    // Quiz Game Promo Tile
+    const quizCard = document.createElement('div');
+    quizCard.className = 'glass-card interactive-hover';
+    quizCard.style.padding = '1.75rem';
+    quizCard.style.cursor = 'pointer';
+    quizCard.style.border = '1px dashed var(--accent-green)';
+    quizCard.style.display = 'flex';
+    quizCard.style.flexDirection = 'column';
+    quizCard.style.justifyContent = 'space-between';
+    quizCard.addEventListener('click', () => {
+      window.location.href = 'quiz.html';
+    });
+    quizCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 World Cup Quiz</span>
+        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY DAILY</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🧠</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">World Cup Quiz</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Answer 3 daily questions to test your knowledge!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
+        Click to test your trivia skills!
+      </div>
+    `;
+    grid.appendChild(quizCard);
+
+    // Show only the 3 game tiles to make a single row (0 matches)
+    const firstRowMatches = matchesList.slice(0, 0);
 
     firstRowMatches.forEach(match => {
       const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;

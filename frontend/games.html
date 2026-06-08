@@ -4,15 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Schedule - FIFA World Cup 2026 Prediction Portal</title>
+  <title>Games - FIFA World Cup 2026 Prediction Portal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body class="bg-portal animate-fade-in">
 
   <!-- Background Player Cutout -->
-  <div class="player-bg-left">
-    <img src="assets/messi_cutout.png" alt="Messi Background">
+  <div class="player-bg-right">
+    <img src="assets/ronaldo_cutout.png" alt="Ronaldo Background">
   </div>
 
   <div class="app-container">
@@ -35,9 +35,9 @@
         <nav class="navbar">
           <ul class="navbar-nav">
             <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
-            <li><a href="schedule.html" class="navbar-link active" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
             <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
-            <li><a href="games.html" class="navbar-link" id="navGames"><span>🎮</span> Games</a></li>
+            <li><a href="games.html" class="navbar-link active" id="navGames"><span>🎮</span> Games</a></li>
             <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
             <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
           </ul>
@@ -52,7 +52,8 @@
           <div class="profile-dropdown" id="profileDropdown">
             <a href="#" class="dropdown-item">👤 Profile Details</a>
             <a href="football.html" class="dropdown-item">🎮 Soccer Game</a>
-            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
+            <a href="score_update.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️
+              Settings</a>
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
             <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
           </div>
@@ -63,69 +64,23 @@
     <!-- Main Content -->
     <main class="main-content">
 
-      <div style="margin-bottom: 2rem;">
-        <h1 class="page-title" style="margin-bottom: 0.5rem;">Match Schedule</h1>
-        <p class="page-subtitle">All match times shown in your local time</p>
-      </div>
-
-      <!-- Filters Panel -->
-      <div class="filters-bar">
-
-        <div class="search-box">
-          <span
-            style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);">🔍</span>
-          <input type="text" id="searchTeam" class="search-input" placeholder="Search by team name...">
+      <div
+        style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 class="page-title" style="margin-bottom: 0.5rem;">Fun Games</h1><br>
+          <p class="page-subtitle">Play Fun Games and Win Exciting Prizes</p>
         </div>
+        <!-- Status Filter -->
+        <div>
 
-        <div class="filters-controls">
-          <select id="filterGroup" class="select-filter">
-            <option value="All">All Groups</option>
-            <option value="A">Group A</option>
-            <option value="B">Group B</option>
-            <option value="C">Group C</option>
-            <option value="D">Group D</option>
-            <option value="E">Group E</option>
-            <option value="F">Group F</option>
-          </select>
-
-          <select id="filterStatus" class="select-filter">
-            <option value="All">All Status</option>
-            <option value="Upcoming">Upcoming</option>
-            <option value="Live">Live</option>
-            <option value="Completed">Completed</option>
-          </select>
-        </div>
-
-      </div>
-
-      <!-- Schedule Table -->
-      <div class="glass-card" style="padding: 1rem 1.5rem;">
-        <div class="table-responsive">
-          <table class="portal-table">
-            <thead>
-              <tr>
-                <th style="width: 15%;">Date & Time</th>
-                <th style="width: 40%;">Match</th>
-                <th style="width: 10%; text-align: center;">Group</th>
-                <th style="width: 20%;">Venue</th>
-                <th style="width: 10%;">Status</th>
-                <th style="width: 5%;">Action</th>
-              </tr>
-            </thead>
-            <tbody id="scheduleTableBody">
-              <!-- Dynamically populated from JS -->
-              <tr>
-                <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
-                  Loading matches schedule...
-                </td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
 
-      <div style="display: flex; justify-content: center; margin-top: 2rem;">
-        <button class="btn btn-primary btn-lg" id="viewFullScheduleBtn">View Full Schedule</button>
+      <div id="gamesContainer">
+        <!-- Loaded Dynamically by JS -->
+        <div class="glass-card" style="text-align: center; padding: 3rem;">
+          <p style="color: var(--text-muted);">Loading matches...</p>
+        </div>
       </div>
 
     </main>
@@ -144,7 +99,7 @@
         <span class="mobile-nav-icon">🗳️</span>
         <span class="mobile-nav-text">Predict</span>
       </a>
-      <a href="games.html" class="mobile-nav-link" id="mobNavGames">
+      <a href="games.html" class="mobile-nav-link active" id="mobNavGames">
         <span class="mobile-nav-icon">🎮</span>
         <span class="mobile-nav-text">Games</span>
       </a>
@@ -159,6 +114,10 @@
     </div>
 
   </div>
+
+  <footer class="page-footer">
+    <p>© 2026 • Designed by Kannan</p>
+  </footer>
 
   <script src="app.js"></script>
 </body>

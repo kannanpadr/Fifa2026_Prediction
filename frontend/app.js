@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
       initSchedulePage();
     } else if (path.includes('prediction.html')) {
       initPredictionPage();
+    } else if (path.includes('games.html')) {
+      initGamesPage();
     } else if (path.includes('score_update.html')) {
       initScoreUpdatePage();
     } else if (path.includes('leaderboard.html')) {
@@ -1193,5 +1195,136 @@ async function initScoreUpdatePage() {
         }
       });
     });
+  }
+}
+
+// --- GAMES PAGE LOGIC ---
+async function initGamesPage() {
+  const container = document.getElementById('gamesContainer');
+  const filterSelect = document.getElementById('gamesStatusFilter');
+  if (!container) return;
+
+  let allMatches = [];
+
+  try {
+    const response = await fetch('/api/matches');
+    allMatches = await response.json();
+    renderGames(allMatches);
+
+    if (filterSelect) {
+      filterSelect.addEventListener('change', () => {
+        const val = filterSelect.value;
+        if (val === 'All') {
+          renderGames(allMatches);
+        } else {
+          const filtered = allMatches.filter(m => m.status === val);
+          renderGames(filtered);
+        }
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    container.innerHTML = '<div class="glass-card" style="color: #ff5252; text-align: center; padding: 3rem;">Failed to load matches.</div>';
+  }
+
+  function renderGames(matchesList) {
+    container.innerHTML = '';
+    if (matchesList.length === 0) {
+      container.innerHTML = `
+        <div class="glass-card" style="text-align: center; padding: 4rem;">
+          <span style="font-size: 3.5rem; display: block; margin-bottom: 1.5rem;">⚽</span>
+          <h3 style="margin-bottom: 0.75rem; font-family: var(--font-display); font-size: 1.4rem; font-weight: 700;">No Matches Found</h3>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">There are no matches under the selected filter.</p>
+        </div>`;
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(320px, 1fr))';
+    grid.style.gap = '1.5rem';
+
+    // Special Mini Soccer Showdown Promo Tile
+    const gameCard = document.createElement('div');
+    gameCard.className = 'glass-card interactive-hover';
+    gameCard.style.padding = '1.75rem';
+    gameCard.style.cursor = 'pointer';
+    gameCard.style.border = '1px dashed var(--accent-green)';
+    gameCard.style.display = 'flex';
+    gameCard.style.flexDirection = 'column';
+    gameCard.style.justifyContent = 'space-between';
+    gameCard.addEventListener('click', () => {
+      window.location.href = 'football.html';
+    });
+    gameCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 Mini Game</span>
+        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🎮</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Mini Soccer Showdown</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Defeat the AI in a physics-based soccer match!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
+        Click to play this game for fun!
+      </div>
+    `;
+    grid.appendChild(gameCard);
+
+    // Limit to only fill the first row (at most 2 matches to make 3 items total)
+    const firstRowMatches = matchesList.slice(0, 2);
+
+    firstRowMatches.forEach(match => {
+      const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;
+      const flag2Url = `https://flagcdn.com/24x18/${match.team2Code}.png`;
+
+      // Status badge class
+      let statusBadgeClass = 'badge-upcoming';
+      if (match.status === 'Live') statusBadgeClass = 'badge-live';
+      if (match.status === 'Completed') statusBadgeClass = 'badge-completed';
+
+      let scoreHTML = '';
+      if (match.status === 'Completed' || match.status === 'Live') {
+        scoreHTML = `
+          <div style="font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; background: rgba(0, 230, 118, 0.15); padding: 6px 16px; border-radius: 8px; color: var(--accent-green); letter-spacing: 2px;">
+            ${match.team1Score} - ${match.team2Score}
+          </div>`;
+      } else {
+        scoreHTML = `
+          <div style="font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; background: rgba(255, 255, 255, 0.05); padding: 6px 14px; border-radius: 8px; color: var(--text-muted); letter-spacing: 1px;">
+            VS
+          </div>`;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'glass-card interactive-hover';
+      card.style.padding = '1.75rem';
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+          <span>Group ${match.group} • ${match.venue}</span>
+          <span class="badge ${statusBadgeClass}">${match.status}</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 0.5rem;">
+          <div style="flex: 1; display: flex; align-items: center; gap: 12px;">
+            <img class="flag-icon" src="${flag1Url}" alt="${match.team1}">
+            <span style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600;">${match.team1}</span>
+          </div>
+          ${scoreHTML}
+          <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-direction: row-reverse; text-align: right;">
+            <img class="flag-icon" src="${flag2Url}" alt="${match.team2}">
+            <span style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600;">${match.team2}</span>
+          </div>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
+          Kickoff: ${match.date} • ${match.time} (IST)
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
   }
 }

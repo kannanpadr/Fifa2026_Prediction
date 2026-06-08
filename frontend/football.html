@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fifa 2026 Mini-Soccer Game</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: radial-gradient(circle at center, #0f1a30 0%, #070d19 100%);
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+
+    .game-layout {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .game-header {
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .canvas-container {
+      position: relative;
+      background: rgba(15, 26, 48, 0.4);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background-color: #0d2319; /* Soccer pitch green */
+    }
+
+    .scoreboard-overlay {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(15, 26, 48, 0.85);
+      border-bottom: 2px solid var(--border-color);
+      font-family: var(--font-display);
+    }
+
+    .score-box {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent-green);
+    }
+
+    .team-name {
+      font-size: 1.1rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    .vs-timer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .timer-val {
+      font-size: 1.8rem;
+      color: #ffd700;
+      font-weight: 700;
+    }
+
+    .controls-panel {
+      margin-top: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      text-align: left;
+    }
+
+    .controls-card {
+      padding: 1rem 1.5rem;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: var(--transition-smooth);
+    }
+
+    .back-btn:hover {
+      color: var(--accent-green);
+    }
+
+    .btn-sound {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-smooth);
+    }
+
+    .btn-sound:hover {
+      background: rgba(0, 230, 118, 0.1);
+      border-color: var(--accent-green);
+    }
+
+    /* Game Over Modal */
+    .game-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 13, 25, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .game-modal.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .modal-subtitle {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+
+<body class="animate-fade-in">
+
+  <div class="game-layout">
+
+    <div class="game-header">
+      <a href="games.html" class="back-btn">
+        <span>←</span> Back to Games
+      </a>
+      <h2 style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase;">
+        🏆 Mini Soccer Showdown
+      </h2>
+      <button id="soundToggle" class="btn-sound">
+        <span>🔊</span> Sound ON
+      </button>
+    </div>
+
+    <!-- Canvas Wrapper with custom overlays -->
+    <div class="canvas-container">
+
+      <!-- Scoreboard Overlay -->
+      <div class="scoreboard-overlay">
+        <div style="text-align: left;">
+          <div class="team-name">Player 1 (You)</div>
+          <div class="score-box" id="p1Score">0</div>
+        </div>
+        <div class="vs-timer">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Match Timer</div>
+          <div class="timer-val" id="timer">60</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="team-name">AI Opponent</div>
+          <div class="score-box" id="p2Score" style="color: #ef5350;">0</div>
+        </div>
+      </div>
+
+      <!-- Game Canvas -->
+      <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+      <!-- Game Over / Start Modal -->
+      <div class="game-modal" id="gameModal">
+        <h2 class="modal-title" id="modalTitle">SOCCER SHOWDOWN</h2>
+        <p class="modal-subtitle" id="modalSubtitle">Defeat the AI to win the Cup!</p>
+        <button class="btn btn-primary btn-lg" id="startBtn">START MATCH</button>
+      </div>
+
+    </div>
+
+    <!-- Controls Description -->
+    <div class="controls-panel">
+      <div class="glass-card controls-card">
+        <h3 class="card-title" style="font-size: 1rem; margin-bottom: 0.5rem;">🎮 Your Controls</h3>
+        <ul style="font-size: 0.85rem; padding-left: 1rem; color: var(--text-muted);">
+          <li><strong>Left / Right Arrow</strong>: Move left & right</li>
+          <li><strong>Up Arrow</strong>: Jump to head the ball</li>
+          <li>Hit the ball with your head/body to shoot at the AI's goal!</li>
+        </ul>
+      </div>
+      <div class="glass-card controls-card">
+        <h3 class="card-title" style="font-size: 1rem; margin-bottom: 0.5rem;">ℹ️ Game Rules</h3>
+        <ul style="font-size: 0.85rem; padding-left: 1rem; color: var(--text-muted);">
+          <li>60 Seconds total match time.</li>
+          <li>Protect your goal (on the left) and score in the AI's goal (on the right).</li>
+          <li>Bouncing off the walls and goalposts is part of the game!</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- WEB AUDIO API AUDIO SYNTHESIS ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let soundEnabled = true;
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'kick') {
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'goal') {
+        // Cheering crowd noise
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(440, now + 0.5);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        osc.start(now);
+        osc.stop(now + 1.2);
+      } else if (type === 'win') {
+        // Victorious fanfare
+        [440, 554, 659, 880].forEach((freq, index) => {
+          const oscF = audioCtx.createOscillator();
+          const gainF = audioCtx.createGain();
+          oscF.connect(gainF);
+          gainF.connect(audioCtx.destination);
+          oscF.frequency.setValueAtTime(freq, now + index * 0.15);
+          gainF.gain.setValueAtTime(0.25, now + index * 0.15);
+          gainF.gain.exponentialRampToValueAtTime(0.01, now + index * 0.15 + 0.3);
+          oscF.start(now + index * 0.15);
+          oscF.stop(now + index * 0.15 + 0.3);
+        });
+      } else if (type === 'lose') {
+        // Sad buzzer
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.6);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      }
+    }
+
+    document.getElementById('soundToggle').addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundToggle').innerHTML = soundEnabled ? '<span>🔊</span> Sound ON' : '<span>🔇</span> Sound OFF';
+    });
+
+    // --- GAME ENGINE ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const GRAVITY = 0.4;
+    const FRICTION = 0.99;
+    const BALL_BOUNCE = 0.75;
+
+    let matchTime = 60;
+    let timerInterval = null;
+    let gameActive = false;
+
+    let p1Score = 0;
+    let p2Score = 0;
+
+    // Entities
+    const ball = {
+      x: 400,
+      y: 100,
+      vx: 0,
+      vy: 0,
+      radius: 12,
+      rotation: 0
+    };
+
+    const player1 = {
+      x: 150,
+      y: 350,
+      vx: 0,
+      vy: 0,
+      radius: 28,
+      speed: 5.5,
+      isGrounded: true,
+      jumpForce: 9.5,
+      color: '#00e676'
+    };
+
+    const player2 = {
+      x: 650,
+      y: 350,
+      vx: 0,
+      vy: 0,
+      radius: 28,
+      speed: 4.2,
+      isGrounded: true,
+      jumpForce: 8.5,
+      color: '#ef5350'
+    };
+
+    // Goals definition
+    const goalLeft = { x: 0, y: 180, width: 25, height: 170 };
+    const goalRight = { x: 775, y: 180, width: 25, height: 170 };
+
+    // Keyboard state
+    const keys = {};
+
+    window.addEventListener('keydown', e => {
+      keys[e.key] = true;
+      // Prevent scrolling
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      keys[e.key] = false;
+    });
+
+    // Confetti particles
+    let particles = [];
+    function spawnConfetti(x, y, color) {
+      for (let i = 0; i < 40; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 8,
+          vy: (Math.random() - 0.5) * 8 - 4,
+          radius: Math.random() * 4 + 2,
+          color: color || `hsl(${Math.random() * 360}, 100%, 60%)`,
+          alpha: 1,
+          life: Math.random() * 30 + 30
+        });
+      }
+    }
+
+    function resetPositions(scorer) {
+      ball.x = 400;
+      ball.y = 100;
+      ball.vx = scorer === 'p1' ? 4 : -4;
+      ball.vy = -3;
+      ball.rotation = 0;
+
+      player1.x = 150;
+      player1.y = 350;
+      player1.vx = 0;
+      player1.vy = 0;
+
+      player2.x = 650;
+      player2.y = 350;
+      player2.vx = 0;
+      player2.vy = 0;
+    }
+
+    function checkGoal() {
+      // Goal Right (Player Scores in AI goal)
+      if (ball.x + ball.radius >= goalRight.x && ball.y >= goalRight.y) {
+        p1Score++;
+        document.getElementById('p1Score').textContent = p1Score;
+        playSound('goal');
+        spawnConfetti(goalRight.x, ball.y, '#00e676');
+        resetPositions('p1');
+      }
+      // Goal Left (AI Scores in Player goal)
+      if (ball.x - ball.radius <= goalLeft.x + goalLeft.width && ball.y >= goalLeft.y) {
+        p2Score++;
+        document.getElementById('p2Score').textContent = p2Score;
+        playSound('goal');
+        spawnConfetti(goalLeft.x + goalLeft.width, ball.y, '#ef5350');
+        resetPositions('p2');
+      }
+    }
+
+    function handleCollisions(entity) {
+      // Ground collision
+      if (entity.y + entity.radius >= 350) {
+        entity.y = 350 - entity.radius;
+        entity.vy = 0;
+        entity.isGrounded = true;
+      } else {
+        entity.isGrounded = false;
+      }
+
+      // Wall boundaries
+      if (entity.x - entity.radius < 0) {
+        entity.x = entity.radius;
+        entity.vx = 0;
+      }
+      if (entity.x + entity.radius > 800) {
+        entity.x = 800 - entity.radius;
+        entity.vx = 0;
+      }
+    }
+
+    function handleBallCollisions() {
+      // Bounce floor
+      if (ball.y + ball.radius >= 350) {
+        ball.y = 350 - ball.radius;
+        ball.vy = -ball.vy * BALL_BOUNCE;
+        ball.vx *= FRICTION;
+      }
+
+      // Ceiling bounce
+      if (ball.y - ball.radius < 0) {
+        ball.y = ball.radius;
+        ball.vy = -ball.vy * BALL_BOUNCE;
+      }
+
+      // Walls bounce above goals
+      if (ball.y < goalRight.y) {
+        if (ball.x - ball.radius < 0) {
+          ball.x = ball.radius;
+          ball.vx = -ball.vx * BALL_BOUNCE;
+        }
+        if (ball.x + ball.radius > 800) {
+          ball.x = 800 - ball.radius;
+          ball.vx = -ball.vx * BALL_BOUNCE;
+        }
+      }
+
+      // Collisions with Player 1
+      let dist1 = Math.hypot(ball.x - player1.x, ball.y - player1.y);
+      let minDist1 = ball.radius + player1.radius;
+      if (dist1 < minDist1) {
+        let angle = Math.atan2(ball.y - player1.y, ball.x - player1.x);
+        ball.x = player1.x + Math.cos(angle) * minDist1;
+        ball.y = player1.y + Math.sin(angle) * minDist1;
+
+        // Apply kick velocities
+        ball.vx = Math.cos(angle) * 8 + player1.vx * 0.5;
+        ball.vy = Math.sin(angle) * 8 + player1.vy * 0.5;
+        playSound('kick');
+      }
+
+      // Collisions with Player 2 (AI)
+      let dist2 = Math.hypot(ball.x - player2.x, ball.y - player2.y);
+      let minDist2 = ball.radius + player2.radius;
+      if (dist2 < minDist2) {
+        let angle = Math.atan2(ball.y - player2.y, ball.x - player2.x);
+        ball.x = player2.x + Math.cos(angle) * minDist2;
+        ball.y = player2.y + Math.sin(angle) * minDist2;
+
+        ball.vx = Math.cos(angle) * 8 + player2.vx * 0.5;
+        ball.vy = Math.sin(angle) * 8 + player2.vy * 0.5;
+        playSound('kick');
+      }
+
+      // Bouncing off goalposts
+      // Left Goal Post
+      if (ball.x - ball.radius <= goalLeft.width && ball.y < goalLeft.y && ball.y + ball.radius >= goalLeft.y) {
+        ball.y = goalLeft.y - ball.radius;
+        ball.vy = -ball.vy * BALL_BOUNCE;
+      }
+      // Right Goal Post
+      if (ball.x + ball.radius >= goalRight.x && ball.y < goalRight.y && ball.y + ball.radius >= goalRight.y) {
+        ball.y = goalRight.y - ball.radius;
+        ball.vy = -ball.vy * BALL_BOUNCE;
+      }
+    }
+
+    // --- GAME AI OPPONENT ---
+    function updateAI() {
+      // Basic AI follow ball
+      let targetX = ball.x;
+
+      // Add a bit of latency/imprecision
+      if (Math.abs(player2.x - targetX) > 10) {
+        if (player2.x < targetX) {
+          player2.vx = player2.speed;
+        } else {
+          player2.vx = -player2.speed;
+        }
+      } else {
+        player2.vx = 0;
+      }
+
+      // Jump decisions
+      if (ball.x > 500 && Math.hypot(ball.x - player2.x, ball.y - player2.y) < 100 && ball.y < player2.y) {
+        if (player2.isGrounded && Math.random() < 0.15) {
+          player2.vy = -player2.jumpForce;
+        }
+      }
+    }
+
+    // --- INPUT UPDATES ---
+    function updateInputs() {
+      // Player 1 controls
+      player1.vx = 0;
+      if (keys['ArrowLeft']) {
+        player1.vx = -player1.speed;
+      }
+      if (keys['ArrowRight']) {
+        player1.vx = player1.speed;
+      }
+      if (keys['ArrowUp'] && player1.isGrounded) {
+        player1.vy = -player1.jumpForce;
+      }
+    }
+
+    // --- DRAW PITCH, ENTITIES, EFFECTS ---
+    function drawPitch() {
+      // Soccer field details
+      ctx.fillStyle = '#0f2f1d'; // Pitch background
+      ctx.fillRect(0, 0, 800, 400);
+
+      // Pitch lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(0, 0, 800, 350);
+
+      // Mid line
+      ctx.beginPath();
+      ctx.moveTo(400, 0);
+      ctx.lineTo(400, 350);
+      ctx.stroke();
+
+      // Center circle
+      ctx.beginPath();
+      ctx.arc(400, 175, 60, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Ground field
+      ctx.fillStyle = '#1e3d2f';
+      ctx.fillRect(0, 350, 800, 50);
+      ctx.fillStyle = '#0f2219';
+      ctx.fillRect(0, 350, 800, 4);
+
+      // Draw Goals
+      // Left Goal (Player Goal - Protect!)
+      ctx.fillStyle = 'rgba(0, 230, 118, 0.1)';
+      ctx.fillRect(goalLeft.x, goalLeft.y, goalLeft.width, goalLeft.height);
+      ctx.strokeStyle = '#ef5350'; // Red net/bars
+      ctx.lineWidth = 3;
+      ctx.strokeRect(goalLeft.x, goalLeft.y, goalLeft.width, goalLeft.height);
+
+      // Right Goal (AI Goal - Attack!)
+      ctx.fillStyle = 'rgba(239, 83, 80, 0.1)';
+      ctx.fillRect(goalRight.x, goalRight.y, goalRight.width, goalRight.height);
+      ctx.strokeStyle = '#00e676'; // Green net/bars
+      ctx.strokeRect(goalRight.x, goalRight.y, goalRight.width, goalRight.height);
+    }
+
+    function drawPlayer(player, isP1) {
+      // Head / body
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fillStyle = player.color;
+      ctx.fill();
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Jersey/number circle
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 16, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fill();
+
+      // Draw Face/Eyes facing the center
+      ctx.fillStyle = '#fff';
+      let dir = isP1 ? 1 : -1;
+      let eyeX1 = player.x + (10 * dir);
+      let eyeY1 = player.y - 8;
+      let eyeX2 = player.x + (20 * dir);
+      let eyeY2 = player.y - 8;
+
+      ctx.beginPath();
+      ctx.arc(eyeX1, eyeY1, 5, 0, Math.PI * 2);
+      ctx.arc(eyeX2, eyeY2, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupils
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(eyeX1 + (2 * dir), eyeY1, 2, 0, Math.PI * 2);
+      ctx.arc(eyeX2 + (2 * dir), eyeY2, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shoes / Feet
+      ctx.fillStyle = '#ff9800';
+      ctx.beginPath();
+      ctx.arc(player.x - 12, player.y + player.radius - 2, 8, 0, Math.PI * 2);
+      ctx.arc(player.x + 12, player.y + player.radius - 2, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawBall() {
+      ctx.save();
+      ctx.translate(ball.x, ball.y);
+      ctx.rotate(ball.rotation);
+
+      // Ball core
+      ctx.beginPath();
+      ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fill();
+      ctx.strokeStyle = '#070d19';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Soccer patches
+      ctx.fillStyle = '#070d19';
+      for (let i = 0; i < 5; i++) {
+        let angle = (i * Math.PI * 2) / 5;
+        ctx.beginPath();
+        ctx.arc(Math.cos(angle) * 7, Math.sin(angle) * 7, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(0, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawParticles() {
+      particles.forEach((p, idx) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.15; // Gravity
+        p.alpha = Math.max(0, p.alpha - 0.025);
+        p.life--;
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.restore();
+
+        if (p.life <= 0 || p.alpha <= 0) {
+          particles.splice(idx, 1);
+        }
+      });
+    }
+
+    // --- GAME LOOP ---
+    function update() {
+      if (!gameActive) return;
+
+      // Update positions
+      updateInputs();
+      updateAI();
+
+      // Apply speeds and velocities
+      player1.x += player1.vx;
+      player1.y += player1.vy;
+      player1.vy += GRAVITY;
+
+      player2.x += player2.vx;
+      player2.y += player2.vy;
+      player2.vy += GRAVITY;
+
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      ball.vy += GRAVITY;
+      ball.rotation += ball.vx * 0.03;
+
+      // Handle boundaries/collisions
+      handleCollisions(player1);
+      handleCollisions(player2);
+      handleBallCollisions();
+
+      // Goal detection
+      checkGoal();
+    }
+
+    function render() {
+      // Clear
+      ctx.clearRect(0, 0, 800, 400);
+
+      // Drawing layers
+      drawPitch();
+      drawPlayer(player1, true);
+      drawPlayer(player2, false);
+      drawBall();
+      drawParticles();
+    }
+
+    function loop() {
+      update();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    // --- GAME LIFECYCLE MANAGEMENT ---
+    const modal = document.getElementById('gameModal');
+    const startBtn = document.getElementById('startBtn');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalSubtitle = document.getElementById('modalSubtitle');
+    const timerEl = document.getElementById('timer');
+
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        matchTime--;
+        timerEl.textContent = matchTime;
+
+        if (matchTime <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      gameActive = false;
+      clearInterval(timerInterval);
+      
+      modal.classList.add('show');
+      startBtn.textContent = 'PLAY AGAIN';
+
+      if (p1Score > p2Score) {
+        modalTitle.textContent = '🏆 YOU WIN! 🏆';
+        modalTitle.style.color = 'var(--accent-green)';
+        modalSubtitle.textContent = `Scoreline: ${p1Score} - ${p2Score}. Great game!`;
+        playSound('win');
+      } else if (p1Score < p2Score) {
+        modalTitle.textContent = '👎 DEFEAT! 👎';
+        modalTitle.style.color = '#ef5350';
+        modalSubtitle.textContent = `Scoreline: ${p1Score} - ${p2Score}. Better luck next time!`;
+        playSound('lose');
+      } else {
+        modalTitle.textContent = '🤝 DRAW! 🤝';
+        modalTitle.style.color = '#ffd700';
+        modalSubtitle.textContent = `Scoreline: ${p1Score} - ${p2Score}. Double Overtime next?`;
+        playSound('lose');
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      // Resume AudioContext if suspended (browser security)
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      modal.classList.remove('show');
+      p1Score = 0;
+      p2Score = 0;
+      matchTime = 60;
+      document.getElementById('p1Score').textContent = '0';
+      document.getElementById('p2Score').textContent = '0';
+      timerEl.textContent = '60';
+
+      resetPositions('p1');
+      gameActive = true;
+      clearInterval(timerInterval);
+      startTimer();
+    });
+
+    // Initialize display and start animation loop
+    modal.classList.add('show');
+    requestAnimationFrame(loop);
+  </script>
+</body>
+
+</html>

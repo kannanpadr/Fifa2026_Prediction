@@ -451,9 +451,9 @@
     let timeTaken = 0;
 
     // Check completion
-    const storedCompletionDate = localStorage.getItem('quizCompletedDate');
-    const storedScore = localStorage.getItem('quizCompletedScore');
-    const storedPoints = localStorage.getItem('quizCompletedPoints');
+    const storedCompletionDate = localStorage.getItem('quizCompletedDate_' + user.username);
+    const storedScore = localStorage.getItem('quizCompletedScore_' + user.username);
+    const storedPoints = localStorage.getItem('quizCompletedPoints_' + user.username);
 
     if (storedCompletionDate === dateString) {
       document.getElementById('quizStatusBox').style.display = 'block';
@@ -598,9 +598,9 @@
         
         if (response.ok && result.success) {
           // Save completion state
-          localStorage.setItem('quizCompletedDate', dateString);
-          localStorage.setItem('quizCompletedScore', score);
-          localStorage.setItem('quizCompletedPoints', result.points);
+          localStorage.setItem('quizCompletedDate_' + user.username, dateString);
+          localStorage.setItem('quizCompletedScore_' + user.username, score);
+          localStorage.setItem('quizCompletedPoints_' + user.username, result.points);
 
           // Update elements
           document.getElementById('resultScore').textContent = `Score: ${score}/5 Correct`;

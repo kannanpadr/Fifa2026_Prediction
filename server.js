@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const app = express();
+const crypto = require('crypto');
 
 const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -48,6 +49,8 @@ const Match = require('./models/Match');
 const Prediction = require('./models/Prediction');
 const LeaderboardEntry = require('./models/LeaderboardEntry');
 const User = require('./models/User');
+const VisitorCounter = require('./models/VisitorCounter');
+const QuizSubmission = require('./models/QuizSubmission');
 
 // Data will be fetched from MongoDB via Mongoose models.
 // No in-memory mock data is used.
@@ -71,7 +74,21 @@ app.post('/api/auth/login', async (req, res) => {
     if (!authOk) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
-    return res.json({ success: true, user: { username: user.username, role: user.role, email: user.email } });
+    
+    // Generate secure session token
+    const token = crypto.randomBytes(32).toString('hex');
+    user.sessionToken = token;
+    await user.save();
+
+    return res.json({ 
+      success: true, 
+      user: { 
+        username: user.username, 
+        role: user.role, 
+        email: user.email,
+        token: token
+      } 
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error" });
@@ -113,6 +130,136 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// Visits Counter API
+app.get('/api/visits', async (req, res) => {
+  try {
+    const counter = await VisitorCounter.findOneAndUpdate(
+      { name: 'global' },
+      { $inc: { count: 1 } },
+      { returnDocument: 'after', upsert: true }
+    );
+    res.json({ count: counter.count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ count: 0 });
+  }
+});
+
+// Daily Quiz Submission Endpoint
+app.post('/api/quiz/submit', async (req, res) => {
+  const { username, score, timeTaken, easyCorrect, mediumCorrect, hardCorrect } = req.body;
+  if (!username || score === undefined || timeTaken === undefined || easyCorrect === undefined || mediumCorrect === undefined || hardCorrect === undefined) {
+    return res.status(400).json({ success: false, message: "Invalid parameters" });
+  }
+
+  // Session token check
+  const authHeader = req.headers.authorization;
+  let token = req.body.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing session token" });
+  }
+
+  try {
+    const sessionUser = await User.findOne({ username: username.trim(), sessionToken: token });
+    if (!sessionUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Invalid session" });
+    }
+
+    // Determine current date string (YYYY-MM-DD)
+    const today = new Date();
+    const dateStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+
+    // Check if submission already exists for this user today
+    const existing = await QuizSubmission.findOne({ username: username.trim(), dateStr });
+    if (existing) {
+      return res.status(409).json({ success: false, message: "You have already completed today's quiz!" });
+    }
+
+    // Calculate points: Easy (10 pts), Medium (20 pts), Hard (30 pts)
+    const basePoints = (easyCorrect * 10) + (mediumCorrect * 20) + (hardCorrect * 30);
+    // Speed bonus: up to 120 extra points if basePoints > 0
+    const speedBonus = basePoints > 0 ? Math.max(0, 120 - parseInt(timeTaken)) : 0;
+    const points = basePoints + speedBonus;
+
+    const submission = new QuizSubmission({
+      username: username.trim(),
+      score: parseInt(score),
+      timeTaken: parseInt(timeTaken),
+      points,
+      dateStr
+    });
+
+    await submission.save();
+    return res.json({ success: true, points, score: submission.score, timeTaken: submission.timeTaken });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error saving quiz submission" });
+  }
+});
+
+// Weekly Quiz Leaderboard Endpoint
+app.get('/api/quiz/weekly-leaderboard', async (req, res) => {
+  try {
+    const now = new Date();
+    
+    // Custom reset boundaries: 19th June, 26 June, 03 july, 10 july (2026)
+    const boundaries = [
+      new Date('2026-06-19T00:00:00+05:30'),
+      new Date('2026-06-26T00:00:00+05:30'),
+      new Date('2026-07-03T00:00:00+05:30'),
+      new Date('2026-07-10T00:00:00+05:30')
+    ];
+
+    let start = new Date(0); // Epoch start
+    let end = new Date(boundaries[0]);
+
+    for (let i = 0; i < boundaries.length; i++) {
+      if (now >= boundaries[i]) {
+        start = boundaries[i];
+        end = (i + 1 < boundaries.length) ? boundaries[i + 1] : new Date('9999-12-31T23:59:59');
+      }
+    }
+
+    const submissions = await QuizSubmission.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start, $lt: end }
+        }
+      },
+      {
+        $group: {
+          _id: "$username",
+          totalPoints: { $sum: "$points" },
+          totalScore: { $sum: "$score" },
+          avgTime: { $avg: "$timeTaken" },
+          attempts: { $sum: 1 }
+         }
+      },
+      {
+        $sort: { totalPoints: -1, totalScore: -1, avgTime: 1 }
+      }
+    ]);
+
+    const leaderboard = submissions.map((s, idx) => ({
+      rank: idx + 1,
+      username: s._id,
+      totalPoints: s.totalPoints,
+      totalScore: s.totalScore,
+      avgTime: Math.round(s.avgTime),
+      attempts: s.attempts
+    }));
+
+    return res.json(leaderboard);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Failed to fetch weekly quiz leaderboard" });
+  }
+});
+
 // Matches
 app.get('/api/matches', async (req, res) => {
   try {
@@ -146,7 +293,23 @@ app.post('/api/predictions', async (req, res) => {
   if (!username || !predictions) {
     return res.status(400).json({ success: false, message: "Invalid prediction request" });
   }
+
+  // Session token authorization check
+  const authHeader = req.headers.authorization;
+  let token = req.body.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing active session token" });
+  }
+
   try {
+    const user = await User.findOne({ username: username.trim(), sessionToken: token });
+    if (!user) {
+      return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
+    }
     const allMatches = await Match.find();
     
     const now = new Date().getTime();
@@ -474,18 +637,29 @@ app.get('/api/standings', async (req, res) => {
   }
 });
 
-// Admin Match Score Update
+// Admin Match Score Management
 app.post('/api/admin/matches/update', async (req, res) => {
   const { username, matchId, team1Score, team2Score, status } = req.body;
   if (!username || matchId === undefined || !status) {
     return res.status(400).json({ success: false, message: "Invalid parameters" });
   }
 
+  // Session token authorization check
+  const authHeader = req.headers.authorization;
+  let token = req.body.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing active session token" });
+  }
+
   try {
-    // Verify admin role
-    const adminUser = await User.findOne({ username: username.trim(), role: 'admin' });
-    if (!adminUser && username.trim().toLowerCase() !== 'admin') {
-      return res.status(403).json({ success: false, message: "Forbidden: Admin role required" });
+    // Verify admin role and session token
+    const adminUser = await User.findOne({ username: username.trim(), role: 'admin', sessionToken: token });
+    if (!adminUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin role and valid session required" });
     }
 
     const match = await Match.findOne({ id: parseInt(matchId) });

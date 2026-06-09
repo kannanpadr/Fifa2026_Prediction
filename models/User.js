@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   pinHash: { type: String },
   role: { type: String, enum: ['admin', 'user'], default: 'user' },
+  sessionToken: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 

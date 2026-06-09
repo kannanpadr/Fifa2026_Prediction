@@ -47,7 +47,7 @@ function initGlobalAuth() {
 
 function checkAuthRedirect() {
   const user = window.getCurrentUser();
-  if (!user) {
+  if (!user || !user.token) {
     window.location.href = 'login.html';
   }
 }
@@ -76,14 +76,14 @@ function initGlobalUI() {
   if (user.role === 'admin') {
     if (navPredictions) {
       navPredictions.href = 'score_update.html';
-      navPredictions.innerHTML = '<span>⚙️</span> Score Update';
+      navPredictions.innerHTML = '<span>⚙️</span> Score Mgmt';
     }
     if (mobNavPredictions) {
       mobNavPredictions.href = 'score_update.html';
       const iconEl = mobNavPredictions.querySelector('.mobile-nav-icon');
       const textEl = mobNavPredictions.querySelector('.mobile-nav-text');
       if (iconEl) iconEl.textContent = '⚙️';
-      if (textEl) textEl.textContent = 'Score Update';
+      if (textEl) textEl.textContent = 'Score Mgmt';
     }
   } else {
     if (navPredictions) {
@@ -331,6 +331,18 @@ async function initDashboardPage() {
   const welcomeText = document.getElementById('welcomeText');
   if (welcomeText) {
     welcomeText.textContent = `Welcome Back, ${user.username}!`;
+  }
+
+  // Fetch and display page visits count
+  try {
+    const visitsResponse = await fetch('/api/visits');
+    const visitsData = await visitsResponse.json();
+    const countValEl = document.getElementById('visitCountVal');
+    if (countValEl) {
+      countValEl.textContent = visitsData.count;
+    }
+  } catch (err) {
+    console.error('Failed to fetch visits count:', err);
   }
 
   // Load Dashboard Overview Predictions & Schedules
@@ -819,9 +831,13 @@ async function initPredictionPage() {
       try {
         const response = await fetch('/api/predictions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
           body: JSON.stringify({
             username: user.username,
+            token: user.token,
             predictions: pagePredictions
           })
         });
@@ -1004,7 +1020,7 @@ function getEarliestActiveDate(matches) {
   return earliestDateStr;
 }
 
-// --- ADMIN SCORE UPDATE PAGE LOGIC ---
+// --- ADMIN SCORE MGMT PAGE LOGIC ---
 async function initScoreUpdatePage() {
   const user = window.getCurrentUser();
   if (!user || user.role !== 'admin') {
@@ -1156,9 +1172,13 @@ async function initScoreUpdatePage() {
           try {
             const updateResponse = await fetch('/api/admin/matches/update', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`
+              },
               body: JSON.stringify({
                 username: user.username,
+                token: user.token,
                 matchId,
                 team1Score,
                 team2Score,
@@ -1325,11 +1345,11 @@ async function initGamesPage() {
         <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🧠</span>
         <div>
           <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">World Cup Quiz</h3>
-          <p style="font-size: 0.75rem; color: var(--text-muted);">Answer 3 daily questions to test your knowledge!</p>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Answer trivia questions daily for a chance to win prizes!</p>
         </div>
       </div>
       <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        Click to test your trivia skills!
+        Click to test your skills and compete with others.
       </div>
     `;
     grid.appendChild(quizCard);
@@ -1386,5 +1406,82 @@ async function initGamesPage() {
     });
 
     container.appendChild(grid);
+
+    // Render Weekly Quiz Leaderboard on games.html
+    const leaderboardSection = document.getElementById('quizLeaderboardSection');
+    if (leaderboardSection) {
+      leaderboardSection.style.display = 'block';
+      const user = window.getCurrentUser();
+      
+      fetch('/api/quiz/weekly-leaderboard')
+        .then(res => res.json())
+        .then(leaderboard => {
+          const header = document.getElementById('leaderboardHeader');
+          const body = document.getElementById('leaderboardBody');
+          if (header && body) {
+            const isAdmin = user && user.role === 'admin';
+            if (isAdmin) {
+              header.innerHTML = `
+                <tr>
+                  <th style="padding: 1rem 0.75rem; width: 10%;">Rank</th>
+                  <th style="padding: 1rem 0.75rem;">User</th>
+                  <th style="padding: 1rem 0.75rem; text-align: center; width: 15%;">Plays</th>
+                  <th style="padding: 1rem 0.75rem; text-align: center; width: 20%;">Scores</th>
+                  <th style="padding: 1rem 0.75rem; text-align: center; width: 20%;">Avg Time</th>
+                  <th style="padding: 1rem 0.75rem; text-align: right; width: 15%;">Points</th>
+                </tr>`;
+            } else {
+              header.innerHTML = `
+                <tr>
+                  <th style="padding: 1rem 0.75rem; width: 15%;">Rank</th>
+                  <th style="padding: 1rem 0.75rem;">Username</th>
+                  <th style="padding: 1rem 0.75rem; text-align: center; width: 25%;">Days Played</th>
+                  <th style="padding: 1rem 0.75rem; text-align: right; width: 20%;">Points</th>
+                </tr>`;
+            }
+
+            body.innerHTML = '';
+            if (leaderboard.length === 0) {
+              body.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 4}" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No submissions yet this week.</td></tr>`;
+            } else {
+              leaderboard.forEach(entry => {
+                const isWinner = entry.rank === 1;
+                const row = document.createElement('tr');
+                if (isWinner) {
+                  row.style.background = 'rgba(255, 215, 0, 0.03)';
+                }
+                
+                if (isAdmin) {
+                  row.innerHTML = `
+                    <td style="padding: 1rem 0.75rem; font-weight: 700; color: ${isWinner ? '#ffd700' : 'var(--text-muted)'};">
+                      ${isWinner ? '👑 1' : entry.rank}
+                    </td>
+                    <td style="padding: 1rem 0.75rem; font-weight: 600; color: ${isWinner ? '#ffd700' : 'var(--text-main)'};">
+                      ${entry.username}
+                    </td>
+                    <td style="padding: 1rem 0.75rem; text-align: center; color: var(--text-muted);">${entry.attempts}</td>
+                    <td style="padding: 1rem 0.75rem; text-align: center;">${entry.totalScore} / ${entry.attempts * 5}</td>
+                    <td style="padding: 1rem 0.75rem; text-align: center; color: var(--text-muted);">${entry.avgTime}s</td>
+                    <td style="padding: 1rem 0.75rem; text-align: right; font-weight: 700; color: var(--accent-green);">${entry.totalPoints}</td>
+                  `;
+                } else {
+                  row.innerHTML = `
+                    <td style="padding: 1rem 0.75rem; font-weight: 700; color: ${isWinner ? '#ffd700' : 'var(--text-muted)'};">
+                      ${isWinner ? '👑 1' : entry.rank}
+                    </td>
+                    <td style="padding: 1rem 0.75rem; font-weight: 600; color: ${isWinner ? '#ffd700' : 'var(--text-main)'};">
+                      ${entry.username}
+                    </td>
+                    <td style="padding: 1rem 0.75rem; text-align: center; color: var(--text-muted);">${entry.attempts}</td>
+                    <td style="padding: 1rem 0.75rem; text-align: right; font-weight: 700; color: var(--accent-green);">${entry.totalPoints}</td>
+                  `;
+                }
+                body.appendChild(row);
+              });
+            }
+          }
+        })
+        .catch(err => console.error('Failed to load weekly leaderboard:', err));
+    }
   }
 }

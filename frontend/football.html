@@ -43,7 +43,8 @@
       display: block;
       width: 100%;
       height: auto;
-      background-color: #0d2319; /* Soccer pitch green */
+      background-color: #0d2319;
+      /* Soccer pitch green */
     }
 
     .scoreboard-overlay {
@@ -163,6 +164,59 @@
       color: var(--text-muted);
       margin-bottom: 2rem;
     }
+
+    /* Mobile Touch Controls styling */
+    .mobile-touch-controls {
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1.5rem;
+      padding: 0 1rem;
+    }
+
+    .touch-direction-buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .touch-btn {
+      width: 72px;
+      height: 72px;
+      font-size: 1.8rem;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid var(--border-color);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .touch-btn:active {
+      background: rgba(0, 230, 118, 0.25);
+      border-color: var(--accent-green);
+      transform: scale(0.9);
+      box-shadow: 0 0 15px rgba(0, 230, 118, 0.35);
+    }
+
+    .jump-btn {
+      background: rgba(0, 230, 118, 0.1);
+      border-color: rgba(0, 230, 118, 0.3);
+    }
+
+    @media (max-width: 768px) {
+      .mobile-touch-controls {
+        display: flex;
+      }
+
+      .controls-panel {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 
@@ -213,6 +267,15 @@
 
     </div>
 
+    <!-- Mobile Touch Controls -->
+    <div class="mobile-touch-controls">
+      <div class="touch-direction-buttons">
+        <button id="touchLeft" class="touch-btn">◀</button>
+        <button id="touchRight" class="touch-btn">▶</button>
+      </div>
+      <button id="touchJump" class="touch-btn jump-btn">▲</button>
+    </div>
+
     <!-- Controls Description -->
     <div class="controls-panel">
       <div class="glass-card controls-card">
@@ -242,7 +305,7 @@
 
     function playSound(type) {
       if (!soundEnabled) return;
-      
+
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -364,6 +427,37 @@
     window.addEventListener('keyup', e => {
       keys[e.key] = false;
     });
+
+    // Touch Controls
+    const btnLeft = document.getElementById('touchLeft');
+    const btnRight = document.getElementById('touchRight');
+    const btnJump = document.getElementById('touchJump');
+
+    if (btnLeft && btnRight && btnJump) {
+      const setupTouchBtn = (btn, keyName) => {
+        const handleStart = (e) => {
+          e.preventDefault();
+          keys[keyName] = true;
+        };
+        const handleEnd = (e) => {
+          e.preventDefault();
+          keys[keyName] = false;
+        };
+
+        btn.addEventListener('touchstart', handleStart, { passive: false });
+        btn.addEventListener('touchend', handleEnd, { passive: false });
+        btn.addEventListener('touchcancel', handleEnd, { passive: false });
+
+        // Also support pointer/mouse events for testing on desktop
+        btn.addEventListener('mousedown', () => { keys[keyName] = true; });
+        btn.addEventListener('mouseup', () => { keys[keyName] = false; });
+        btn.addEventListener('mouseleave', () => { keys[keyName] = false; });
+      };
+
+      setupTouchBtn(btnLeft, 'ArrowLeft');
+      setupTouchBtn(btnRight, 'ArrowRight');
+      setupTouchBtn(btnJump, 'ArrowUp');
+    }
 
     // Confetti particles
     let particles = [];
@@ -753,7 +847,7 @@
     function endGame() {
       gameActive = false;
       clearInterval(timerInterval);
-      
+
       modal.classList.add('show');
       startBtn.textContent = 'PLAY AGAIN';
 

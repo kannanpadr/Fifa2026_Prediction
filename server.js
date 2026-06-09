@@ -184,7 +184,7 @@ app.post('/api/quiz/submit', async (req, res) => {
     // Speed bonus: up to 120 extra points if basePoints > 0
     const speedBonus = basePoints > 0 ? Math.max(0, 120 - parseInt(timeTaken)) : 0;
     // Score * 1000 guarantees more correct answers always give more points
-    const points = (parseInt(score) * 1000) + basePoints + speedBonus;
+    const points = (parseInt(score) * 10) + basePoints + speedBonus;
 
     const submission = new QuizSubmission({
       username: username.trim(),

@@ -74,20 +74,20 @@ app.post('/api/auth/login', async (req, res) => {
     if (!authOk) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
-    
+
     // Generate secure session token
     const token = crypto.randomBytes(32).toString('hex');
     user.sessionToken = token;
     await user.save();
 
-    return res.json({ 
-      success: true, 
-      user: { 
-        username: user.username, 
-        role: user.role, 
+    return res.json({
+      success: true,
+      user: {
+        username: user.username,
+        role: user.role,
         email: user.email,
         token: token
-      } 
+      }
     });
   } catch (err) {
     console.error(err);
@@ -206,7 +206,7 @@ app.post('/api/quiz/submit', async (req, res) => {
 app.get('/api/quiz/weekly-leaderboard', async (req, res) => {
   try {
     const now = new Date();
-    
+
     // Custom reset boundaries: 19th June, 26 June, 03 july, 10 july (2026)
     const boundaries = [
       new Date('2026-06-19T00:00:00+05:30'),
@@ -238,7 +238,7 @@ app.get('/api/quiz/weekly-leaderboard', async (req, res) => {
           totalScore: { $sum: "$score" },
           avgTime: { $avg: "$timeTaken" },
           attempts: { $sum: 1 }
-         }
+        }
       },
       {
         $sort: { totalPoints: -1, totalScore: -1, avgTime: 1 }
@@ -312,9 +312,9 @@ app.post('/api/predictions', async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
     }
     const allMatches = await Match.find();
-    
+
     const now = new Date().getTime();
-    
+
     // Find active matches that have not started yet
     const activeMatches = allMatches.filter(m => {
       const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
@@ -544,7 +544,7 @@ const INITIAL_GROUPS = {
 app.get('/api/standings', async (req, res) => {
   try {
     const matches = await Match.find();
-    
+
     // Initialize stats for all groups
     const standings = {};
     Object.keys(INITIAL_GROUPS).forEach(groupLetter => {

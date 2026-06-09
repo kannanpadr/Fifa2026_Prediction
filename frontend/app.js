@@ -1,3 +1,57 @@
+// Global Toast Notification System
+window.showToast = function (message, type = 'success') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.position = 'fixed';
+    container.style.top = '24px';
+    container.style.right = '24px';
+    container.style.zIndex = '99999';
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.gap = '12px';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.style.background = type === 'success' ? 'rgba(0, 230, 118, 0.95)' : 'rgba(239, 83, 80, 0.95)';
+  toast.style.color = type === 'success' ? '#070d19' : '#ffffff';
+  toast.style.padding = '14px 28px';
+  toast.style.borderRadius = '12px';
+  toast.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+  toast.style.fontSize = '0.9rem';
+  toast.style.fontWeight = '700';
+  toast.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.4)';
+  toast.style.backdropFilter = 'blur(8px)';
+  toast.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+  toast.style.transform = 'translateX(120%)';
+  toast.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease';
+  toast.style.display = 'flex';
+  toast.style.alignItems = 'center';
+  toast.style.gap = '10px';
+  toast.style.opacity = '0';
+
+  const icon = type === 'success' ? '✅' : '❌';
+  toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+  container.appendChild(toast);
+
+  // Trigger entering animation
+  setTimeout(() => {
+    toast.style.transform = 'translateX(0)';
+    toast.style.opacity = '1';
+  }, 50);
+
+  // Hide and remove after delay
+  setTimeout(() => {
+    toast.style.transform = 'translateX(120%)';
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      toast.remove();
+    }, 500);
+  }, 4000);
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   // Global Setup
   initGlobalAuth();
@@ -308,7 +362,7 @@ function initLoginPage() {
 
         const result = await response.json();
         if (response.ok && result.success) {
-          alert('Registration successful! Please login.');
+          showToast('Registration successful! Please login.', 'success');
           registerForm.style.display = 'none';
           loginForm.style.display = 'block';
         } else {
@@ -368,7 +422,7 @@ async function initDashboardPage() {
     if (dashboardPredictList) {
       dashboardPredictList.innerHTML = '';
 
-      const limitUpcoming = upcomingMatches.slice(0, 2);
+      const limitUpcoming = upcomingMatches;
       if (limitUpcoming.length === 0) {
         dashboardPredictList.innerHTML = '<p style="color:var(--text-muted); font-size: 0.85rem;">No upcoming matches to predict.</p>';
       } else {
@@ -414,6 +468,40 @@ async function initDashboardPage() {
           `;
           dashboardPredictList.appendChild(card);
         });
+
+        // Auto-scroll loop if there are more than 2 fixtures
+        if (limitUpcoming.length > 2) {
+          dashboardPredictList.style.maxHeight = '320px';
+          dashboardPredictList.style.overflowY = 'hidden';
+          dashboardPredictList.style.position = 'relative';
+
+          // Clone elements for seamless loop
+          const originalCount = dashboardPredictList.children.length;
+          for (let i = 0; i < originalCount; i++) {
+            const clone = dashboardPredictList.children[i].cloneNode(true);
+            dashboardPredictList.appendChild(clone);
+          }
+
+          let scrollSpeed = 0.5; // Slow smooth scroll
+          let scrollInterval = 25; // Millisecond steps
+          let scrollPos = 0;
+          let hoverPaused = false;
+
+          dashboardPredictList.addEventListener('mouseenter', () => { hoverPaused = true; });
+          dashboardPredictList.addEventListener('mouseleave', () => { hoverPaused = false; });
+
+          const scrollTicker = () => {
+            if (hoverPaused) return;
+            scrollPos += scrollSpeed;
+            const halfHeight = dashboardPredictList.scrollHeight / 2;
+            if (halfHeight > 0 && scrollPos >= halfHeight) {
+              scrollPos = 0;
+            }
+            dashboardPredictList.scrollTop = Math.floor(scrollPos);
+          };
+
+          setInterval(scrollTicker, scrollInterval);
+        }
       }
     }
 
@@ -844,18 +932,18 @@ async function initPredictionPage() {
 
         const result = await response.json();
         if (response.ok && result.success) {
-          alert('Success! Your predictions have been saved.');
+          showToast('Success! Your predictions have been saved.', 'success');
           // Update prediction count statistic
           const userPredictedMatchesEl = document.getElementById('statUserPredicted');
           if (userPredictedMatchesEl) {
             userPredictedMatchesEl.textContent = Object.keys(pagePredictions).length;
           }
         } else {
-          alert('Failed to save predictions: ' + result.message);
+          showToast('Failed to save predictions: ' + result.message, 'error');
         }
       } catch (err) {
         console.error(err);
-        alert('Server connection failed. Could not save predictions.');
+        showToast('Server connection failed. Could not save predictions.', 'error');
       }
     });
   }
@@ -1188,7 +1276,7 @@ async function initScoreUpdatePage() {
 
             const result = await updateResponse.json();
             if (updateResponse.ok && result.success) {
-              alert(`Match ${matchId} updated successfully!`);
+              showToast(`Match ${matchId} updated successfully!`, 'success');
               // Reload page-specific stats dynamically
               const matchesResponse = await fetch('/api/matches');
               const matches = await matchesResponse.json();
@@ -1206,11 +1294,11 @@ async function initScoreUpdatePage() {
               if (statLiveMatches) statLiveMatches.textContent = liveCount;
               if (statCompletedMatches) statCompletedMatches.textContent = completedCount;
             } else {
-              alert('Failed to update match: ' + result.message);
+              showToast('Failed to update match: ' + result.message, 'error');
             }
           } catch (err) {
             console.error('Update match failed:', err);
-            alert('Server error: failed to update match.');
+            showToast('Server error: failed to update match.', 'error');
           }
         }
       });

@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
       initGamesPage();
     } else if (path.includes('score_update.html')) {
       initScoreUpdatePage();
+    } else if (path.includes('settings.html')) {
+      initSettingsPage();
     } else if (path.includes('leaderboard.html')) {
       initLeaderboardPage();
     } else if (path.includes('standings.html')) {
@@ -1572,4 +1574,118 @@ async function initGamesPage() {
         .catch(err => console.error('Failed to load weekly leaderboard:', err));
     }
   }
+}
+
+// --- ADMIN SETTINGS PAGE LOGIC ---
+async function initSettingsPage() {
+  const user = window.getCurrentUser();
+  if (!user || user.role !== 'admin') {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(`/api/admin/users?username=${encodeURIComponent(user.username)}&token=${encodeURIComponent(user.token)}`);
+      const data = await response.json();
+      if (data.success) {
+        renderUsers(data.users);
+      } else {
+        window.showToast(data.message || 'Failed to fetch users', 'error');
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      window.showToast('Error connecting to server', 'error');
+    }
+  };
+
+  const renderUsers = (users) => {
+    const container = document.getElementById('adminUsersContainer');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (users.length === 0) {
+      container.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No users found.</td></tr>';
+      return;
+    }
+
+    // Calculate stats
+    let total = users.length;
+    let active = users.filter(u => u.status !== 'deleted').length;
+    let deleted = users.filter(u => u.status === 'deleted').length;
+
+    const totalEl = document.getElementById('statTotalUsers');
+    const activeEl = document.getElementById('statActiveUsers');
+    const deletedEl = document.getElementById('statDeletedUsers');
+
+    if (totalEl) totalEl.textContent = total;
+    if (activeEl) activeEl.textContent = active;
+    if (deletedEl) deletedEl.textContent = deleted;
+
+    users.forEach(u => {
+      const row = document.createElement('tr');
+
+      const isDeleted = u.status === 'deleted';
+      const statusBadge = isDeleted 
+        ? '<span class="badge badge-deleted">Deleted</span>' 
+        : '<span class="badge badge-active">Active</span>';
+
+      const isSelf = u.username === user.username;
+      const isAdmin = u.role === 'admin';
+
+      // Delete button: disabled if self or admin or already deleted
+      const canDelete = !isSelf && !isAdmin && !isDeleted;
+      const deleteBtn = `<button class="btn-danger" ${canDelete ? '' : 'disabled'} onclick="deleteUser('${u.username}')">
+        <span>🗑️</span> Delete
+      </button>`;
+
+      row.innerHTML = `
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="user-avatar">${u.username.charAt(0).toUpperCase()}</div>
+            <span style="font-weight:600;">${u.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:6px;">(You)</small>' : ''}</span>
+          </div>
+        </td>
+        <td>${u.phone}</td>
+        <td style="text-align:center;">
+          <span style="text-transform: capitalize; font-weight:500; color:${isAdmin ? 'var(--accent-green)' : 'var(--text-muted)'}">${u.role}</span>
+        </td>
+        <td style="text-align:center;">${statusBadge}</td>
+        <td style="text-align:right;">${deleteBtn}</td>
+      `;
+      container.appendChild(row);
+    });
+  };
+
+  window.deleteUser = async (targetUsername) => {
+    if (!confirm(`Are you sure you want to delete user "${targetUsername}"?\nThis user will not be able to log in or register again with the same number.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user.username,
+          token: user.token,
+          targetUsername: targetUsername
+        })
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        window.showToast(result.message || 'User deleted successfully', 'success');
+        fetchUsers(); // Refresh list
+      } else {
+        window.showToast(result.message || 'Failed to delete user', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      window.showToast('Connection error', 'error');
+    }
+  };
+
+  // Initial load
+  await fetchUsers();
 }

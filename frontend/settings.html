@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Settings - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 1fr 2.5fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 992px) {
+      .settings-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btn-danger {
+      background: rgba(255, 82, 82, 0.12);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+      color: #ff5252;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0.45rem 1rem;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      text-decoration: none;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: rgba(255, 82, 82, 0.22);
+      border-color: #ff5252;
+      box-shadow: 0 0 15px rgba(255, 82, 82, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .btn-danger:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      border-color: var(--border-color);
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge-active {
+      background: rgba(0, 230, 118, 0.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(0, 230, 118, 0.2);
+    }
+
+    .badge-deleted {
+      background: rgba(255, 82, 82, 0.12);
+      color: #ff5252;
+      border: 1px solid rgba(255, 82, 82, 0.2);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+  </style>
+</head>
+
+<body class="bg-portal animate-fade-in">
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="games.html" class="navbar-link" id="navGames"><span>🎮</span> Games</a></li>
+            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">A</div>
+            <span class="profile-name">Admin</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2rem;">
+        <h1 class="page-title" style="margin-bottom: 0.5rem;">Admin Settings</h1>
+        <p class="page-subtitle">Manage registered users, roles, statuses, and login permissions.</p>
+      </div>
+
+      <div class="settings-layout">
+
+        <!-- Left Column: Admin Info & Stats -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+          <!-- Info Box -->
+          <div class="glass-card">
+            <h3 class="card-title" style="font-size: 1.05rem;"><span>🛡️</span> User Operations</h3>
+            <ul class="prediction-rules-list" style="font-size: 0.82rem; padding-left: 0;">
+              <li>Review registration history and roles.</li>
+              <li><strong>Deactivation Control</strong>: Deleting a user disables login immediately.</li>
+              <li>Registration block: The user cannot register a new account using the same phone number.</li>
+              <li>Deleted users are automatically excluded from the leaderboard preview and standings list.</li>
+            </ul>
+          </div>
+
+          <!-- Users Summary Stats -->
+          <div class="glass-card" style="display: flex; flex-direction: column; gap: 1.25rem; padding: 1.5rem;">
+            <h3 class="card-title" style="font-size: 1.05rem; margin-bottom: 0;"><span>📊</span> User Statistics</h3>
+            <div style="display: flex; justify-content: space-around; text-align: center; width: 100%;">
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);" id="statTotalUsers">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Total</div>
+              </div>
+              <div style="border-right: 1px solid var(--border-color);"></div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-green);" id="statActiveUsers">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Active</div>
+              </div>
+              <div style="border-right: 1px solid var(--border-color);"></div>
+              <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #ff5252;" id="statDeletedUsers">0</div>
+                <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Deleted</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: User List Panel -->
+        <div class="glass-card" style="min-height: 400px; display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem;">
+          <div>
+            <h2 class="card-title" style="margin-bottom: 1.5rem;"><span>👤</span> Registered Users</h2>
+
+            <div class="table-responsive">
+              <table class="portal-table">
+                <thead>
+                  <tr>
+                    <th style="width: 25%;">User</th>
+                    <th style="width: 25%;">Phone Number</th>
+                    <th style="width: 15%; text-align: center;">Role</th>
+                    <th style="width: 15%; text-align: center;">Status</th>
+                    <th style="width: 20%; text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersContainer">
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                      Loading users...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="games.html" class="mobile-nav-link" id="mobNavGames">
+        <span class="mobile-nav-icon">🎮</span>
+        <span class="mobile-nav-text">Games</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

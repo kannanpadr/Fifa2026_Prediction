@@ -66,6 +66,10 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
+
+    if (user.status === 'deleted') {
+      return res.status(403).json({ success: false, message: "This account has been deleted/disabled. Please contact admin." });
+    }
     let authOk = false;
     if (password) {
       const pinMatch = await bcrypt.compare(password, user.pinHash);
@@ -387,7 +391,7 @@ app.post('/api/predictions', async (req, res) => {
 // Leaderboard
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const users = await User.find({ role: 'user' });
+    const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
     const matches = await Match.find({ status: { $in: ['Completed', 'Live'] } });
     const predictions = await Prediction.find({});
 
@@ -678,6 +682,69 @@ app.post('/api/admin/matches/update', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error during match update" });
+  }
+});
+
+// Admin User Management - List Users
+app.get('/api/admin/users', async (req, res) => {
+  const username = req.query.username || req.headers['x-username'];
+  const authHeader = req.headers.authorization;
+  let token = req.query.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!username || !token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing username or token" });
+  }
+
+  try {
+    // Verify admin role and session token
+    const adminUser = await User.findOne({ username: username.trim(), role: 'admin', sessionToken: token });
+    if (!adminUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin role and valid session required" });
+    }
+
+    // Return list of all users, sorted by creation date, excluding sensitive hashes
+    const users = await User.find({}, { pinHash: 0 }).sort({ createdAt: -1 });
+    return res.json({ success: true, users });
+  } catch (err) {
+    console.error('Error listing users:', err);
+    return res.status(500).json({ success: false, message: "Server error listing users" });
+  }
+});
+
+// Admin User Management - Delete (Soft Delete) User
+app.post('/api/admin/users/delete', async (req, res) => {
+  const { username, token, targetUsername } = req.body;
+  if (!username || !token || !targetUsername) {
+    return res.status(400).json({ success: false, message: "Invalid parameters" });
+  }
+
+  try {
+    // Verify admin role and session token
+    const adminUser = await User.findOne({ username: username.trim(), role: 'admin', sessionToken: token });
+    if (!adminUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin role and valid session required" });
+    }
+
+    const targetUser = await User.findOne({ username: targetUsername.trim() });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (targetUser.role === 'admin') {
+      return res.status(400).json({ success: false, message: "Cannot delete admin users" });
+    }
+
+    targetUser.status = 'deleted';
+    targetUser.sessionToken = null; // Invalidate current session
+    await targetUser.save();
+
+    return res.json({ success: true, message: `User ${targetUsername} deleted successfully` });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    return res.status(500).json({ success: false, message: "Server error deleting user" });
   }
 });
 

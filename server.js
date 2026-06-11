@@ -169,6 +169,14 @@ app.get('/api/quiz/daily', async (req, res) => {
     }
 
     const today = new Date();
+    const dateStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+
+    // Check if user has already completed the quiz today
+    const existing = await QuizSubmission.findOne({ username: sessionUser.username, dateStr });
+    if (existing) {
+      return res.json({ success: true, completedToday: true, score: existing.score, points: existing.points });
+    }
+
     const tournamentStartDate = new Date('2026-06-01T00:00:00+0530');
     const msPerDay = 24 * 60 * 60 * 1000;
     const diffMs = today.getTime() - tournamentStartDate.getTime();
@@ -191,7 +199,7 @@ app.get('/api/quiz/daily', async (req, res) => {
       a: Buffer.from(q.a.toString()).toString('base64')
     }));
 
-    return res.json({ success: true, questions: clientQuestions });
+    return res.json({ success: true, completedToday: false, questions: clientQuestions });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error fetching daily quiz questions" });

@@ -423,7 +423,8 @@
     if (storedCompletionDate === dateString) {
       document.getElementById('quizStatusBox').style.display = 'block';
       document.getElementById('todayScoreText').textContent = `Your score: ${storedScore}/5 correct. Points earned: ${storedPoints || 0}. Complete another quiz tomorrow!`;
-      document.getElementById('startBtn').textContent = 'REPLAY QUIZ';
+      document.getElementById('startBtn').textContent = 'QUIZ COMPLETED';
+      document.getElementById('startBtn').disabled = true;
     }
 
     // Fetch questions from the secure API
@@ -436,8 +437,23 @@
         });
         const result = await response.json();
         if (response.ok && result.success) {
-          dailyQuestions = result.questions;
-          document.getElementById('startBtn').disabled = false;
+          if (result.completedToday) {
+            // Update localStorage to stay in sync
+            localStorage.setItem('quizCompletedDate_' + user.username, dateString);
+            localStorage.setItem('quizCompletedScore_' + user.username, result.score);
+            localStorage.setItem('quizCompletedPoints_' + user.username, result.points);
+
+            document.getElementById('quizStatusBox').style.display = 'block';
+            document.getElementById('todayScoreText').textContent = `Your score: ${result.score}/5 correct. Points earned: ${result.points || 0}. Complete another quiz tomorrow!`;
+            document.getElementById('startBtn').textContent = 'QUIZ COMPLETED';
+            document.getElementById('startBtn').disabled = true;
+          } else {
+            dailyQuestions = result.questions;
+            // Only enable button if not completed today in localStorage
+            if (localStorage.getItem('quizCompletedDate_' + user.username) !== dateString) {
+              document.getElementById('startBtn').disabled = false;
+            }
+          }
         } else {
           document.getElementById('questionText').textContent = 'Failed to load questions. Please refresh.';
           document.getElementById('startBtn').disabled = true;

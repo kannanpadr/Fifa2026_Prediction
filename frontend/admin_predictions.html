@@ -4,8 +4,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard - FIFA World Cup 2026 Prediction Portal</title>
+  <title>Player Predictions - FIFA World Cup 2026 Admin Portal</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-preds-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .badge-exact {
+      background: rgba(0, 230, 118, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+
+    .badge-winner {
+      background: rgba(255, 215, 0, 0.15);
+      color: var(--accent-gold);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .badge-wrong {
+      background: rgba(255, 82, 82, 0.12);
+      color: #ff5252;
+      border: 1px solid rgba(255, 82, 82, 0.2);
+    }
+
+    .badge-pending {
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text-muted);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+  </style>
 </head>
 
 <body class="bg-portal animate-fade-in">
@@ -34,7 +65,7 @@
 
         <nav class="navbar">
           <ul class="navbar-nav">
-            <li><a href="index.html" class="navbar-link active" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
             <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
             <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
             <li><a href="games.html" class="navbar-link" id="navGames"><span>🎮</span> Games</a></li>
@@ -45,8 +76,8 @@
 
         <div class="profile-menu" id="profileTrigger">
           <div class="profile-trigger">
-            <div class="profile-avatar">J</div>
-            <span class="profile-name">John Doe</span>
+            <div class="profile-avatar">A</div>
+            <span class="profile-name">Admin</span>
             <span class="profile-arrow">▼</span>
           </div>
           <div class="profile-dropdown" id="profileDropdown">
@@ -64,72 +95,97 @@
     <main class="main-content">
 
       <div style="margin-bottom: 2rem;">
-        <h1 class="page-title" id="welcomeText" style="margin-bottom: 0.5rem;">Welcome Back, John Doe!</h1>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">Track your performance, check schedules, and make
-          predictions.</p>
+        <h1 class="page-title" style="margin-bottom: 0.5rem;">Player Predictions</h1>
+        <p class="page-subtitle">Monitor all match predictions submitted by participants.</p>
       </div>
 
       <!-- Stats Grid -->
-      <div class="dashboard-grid">
-
+      <div class="dashboard-grid" style="margin-bottom: 2rem;">
         <div class="glass-card stats-card">
-          <div class="stats-icon">🏆</div>
+          <div class="stats-icon">🗳️</div>
           <div class="stats-info">
-            <span class="stats-value" id="statUserRank"># -</span>
-            <span class="stats-label">Your Current Rank</span>
+            <span class="stats-value" id="statTotalPredictions">0</span>
+            <span class="stats-label">Total Predictions</span>
           </div>
         </div>
 
         <div class="glass-card stats-card">
-          <div class="stats-icon">⚡</div>
+          <div class="stats-icon">👤</div>
           <div class="stats-info">
-            <span class="stats-value" id="statUserPoints">0</span>
-            <span class="stats-label">Total Points</span>
+            <span class="stats-value" id="statTotalPredictors">0</span>
+            <span class="stats-label">Active Predictors</span>
           </div>
         </div>
 
         <div class="glass-card stats-card">
           <div class="stats-icon">🎯</div>
           <div class="stats-info">
-            <span class="stats-value" id="statUserExact">0</span>
+            <span class="stats-value" id="statExactScores">0</span>
             <span class="stats-label">Exact Scores</span>
           </div>
         </div>
 
         <div class="glass-card stats-card">
-          <div class="stats-icon">🗳️</div>
+          <div class="stats-icon">⚡</div>
           <div class="stats-info">
-            <span class="stats-value" id="statPredictedMatches">0 / 0</span>
-            <span class="stats-label">Matches Predicted</span>
+            <span class="stats-value" id="statAvgPoints">0.0</span>
+            <span class="stats-label">Avg Points / Predictor</span>
           </div>
         </div>
-
       </div>
 
-      <!-- Dashboard Sections split -->
-      <div class="dashboard-sections">
+      <div class="admin-preds-layout">
 
-        <!-- Left Section: Predictions list -->
-        <div class="glass-card">
-          <h2 class="card-title"><span>🔥</span> Next Fixtures to Predict</h2>
-          <div id="dashboardPredictList" style="margin-top: 1.5rem;">
-            <!-- Rendered by JS -->
-            <div style="text-align: center; padding: 2rem;">Loading upcoming fixtures...</div>
+        <!-- Filters Bar -->
+        <div class="glass-card" style="padding: 1.25rem;">
+          <div class="filters-bar" style="margin-bottom: 0;">
+            <div class="search-box">
+              <span class="input-icon" style="left: 1.2rem;">🔍</span>
+              <input type="text" id="searchPlayer" placeholder="Search player name..." class="search-input" style="padding-left: 2.75rem;">
+            </div>
+
+            <div class="filters-controls">
+              <select id="filterMatch" class="select-filter" style="max-width: 250px;">
+                <option value="All">All Matches</option>
+              </select>
+
+              <select id="filterOutcome" class="select-filter">
+                <option value="All">All Outcomes</option>
+                <option value="Exact">Exact Score (+5 pts)</option>
+                <option value="Winner">Winner Out (+3 pts)</option>
+                <option value="Wrong">Wrong Out (0 pts)</option>
+                <option value="Pending">Pending Match</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Right Section: Leaderboard summary preview -->
-        <div class="glass-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <!-- Predictions Table Panel -->
+        <div class="glass-card" style="padding: 1.5rem; min-height: 400px;">
           <div>
-            <h2 class="card-title"><span>📊</span> Leaderboard Preview</h2>
+            <h2 class="card-title" style="margin-bottom: 1.5rem;"><span>📊</span> Player Prediction List</h2>
 
-            <div style="margin-top: 1.5rem;" id="dashboardLeaderboardPreview">
-              <div style="text-align: center; padding: 2rem; color: var(--text-muted);">Loading standings...</div>
+            <div class="table-responsive">
+              <table class="portal-table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Player</th>
+                    <th style="width: 30%;">Match</th>
+                    <th style="width: 10%; text-align: center;">Group</th>
+                    <th style="width: 15%; text-align: center;">Predicted Score</th>
+                    <th style="width: 15%; text-align: center;">Actual Result</th>
+                    <th style="width: 10%; text-align: right;">Points</th>
+                  </tr>
+                </thead>
+                <tbody id="adminPredictionsContainer">
+                  <tr>
+                    <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                      Loading predictions...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
-
-          <div style="margin-top: 2rem;">
-            <a href="leaderboard.html" class="btn btn-primary btn-block">View Full Standings</a>
           </div>
         </div>
 
@@ -170,12 +226,6 @@
   <footer class="page-footer">
     <p>© 2026 • Designed by Kannan</p>
   </footer>
-
-  <!-- Page Visits Counter at Bottom Right Corner -->
-  <div class="visits-counter" id="visitsCounter">
-    <span class="status-dot"></span>
-    Visits: <span class="count-val" id="visitCountVal">...</span>
-  </div>
 
   <script src="app.js"></script>
 </body>

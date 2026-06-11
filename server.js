@@ -51,6 +51,7 @@ const LeaderboardEntry = require('./models/LeaderboardEntry');
 const User = require('./models/User');
 const VisitorCounter = require('./models/VisitorCounter');
 const QuizSubmission = require('./models/QuizSubmission');
+const questionsPool = require('./data/questionsPool');
 
 // Data will be fetched from MongoDB via Mongoose models.
 // No in-memory mock data is used.
@@ -149,11 +150,59 @@ app.get('/api/visits', async (req, res) => {
   }
 });
 
+// Get Daily Quiz Questions
+app.get('/api/quiz/daily', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  let token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing session token" });
+  }
+
+  try {
+    const sessionUser = await User.findOne({ sessionToken: token });
+    if (!sessionUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Invalid session" });
+    }
+
+    const today = new Date();
+    const tournamentStartDate = new Date('2026-06-01T00:00:00+0530');
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diffMs = today.getTime() - tournamentStartDate.getTime();
+    const daySeed = Math.max(0, Math.floor(diffMs / msPerDay));
+
+    // Select 2 Easy, 2 Medium, 1 Hard
+    const easyQ1 = questionsPool.easy[(daySeed * 2) % questionsPool.easy.length];
+    const easyQ2 = questionsPool.easy[(daySeed * 2 + 1) % questionsPool.easy.length];
+    const medQ1 = questionsPool.medium[(daySeed * 2) % questionsPool.medium.length];
+    const medQ2 = questionsPool.medium[(daySeed * 2 + 1) % questionsPool.medium.length];
+    const hardQ = questionsPool.hard[daySeed % questionsPool.hard.length];
+
+    const dailyQuestions = [easyQ1, easyQ2, medQ1, medQ2, hardQ];
+
+    // Strip/obfuscate correct answer index to prevent simple client-side page source or network inspection
+    const clientQuestions = dailyQuestions.map(q => ({
+      q: q.q,
+      o: q.o,
+      d: q.d,
+      a: Buffer.from(q.a.toString()).toString('base64')
+    }));
+
+    return res.json({ success: true, questions: clientQuestions });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error fetching daily quiz questions" });
+  }
+});
+
 // Daily Quiz Submission Endpoint
 app.post('/api/quiz/submit', async (req, res) => {
-  const { username, score, timeTaken, easyCorrect, mediumCorrect, hardCorrect } = req.body;
-  if (!username || score === undefined || timeTaken === undefined || easyCorrect === undefined || mediumCorrect === undefined || hardCorrect === undefined) {
-    return res.status(400).json({ success: false, message: "Invalid parameters" });
+  const { username, answers, timeTaken } = req.body;
+  if (!username || !answers || !Array.isArray(answers) || answers.length !== 5 || timeTaken === undefined) {
+    return res.status(400).json({ success: false, message: "Invalid parameters: answers array must contain exactly 5 elements" });
   }
 
   // Session token check
@@ -183,11 +232,39 @@ app.post('/api/quiz/submit', async (req, res) => {
       return res.status(409).json({ success: false, message: "You have already completed today's quiz!" });
     }
 
+    // Determine today's correct answers on backend securely
+    const tournamentStartDate = new Date('2026-06-01T00:00:00+0530');
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diffMs = today.getTime() - tournamentStartDate.getTime();
+    const daySeed = Math.max(0, Math.floor(diffMs / msPerDay));
+
+    const easyQ1 = questionsPool.easy[(daySeed * 2) % questionsPool.easy.length];
+    const easyQ2 = questionsPool.easy[(daySeed * 2 + 1) % questionsPool.easy.length];
+    const medQ1 = questionsPool.medium[(daySeed * 2) % questionsPool.medium.length];
+    const medQ2 = questionsPool.medium[(daySeed * 2 + 1) % questionsPool.medium.length];
+    const hardQ = questionsPool.hard[daySeed % questionsPool.hard.length];
+
+    const dailyQuestions = [easyQ1, easyQ2, medQ1, medQ2, hardQ];
+
+    let score = 0;
+    let easyCorrect = 0;
+    let mediumCorrect = 0;
+    let hardCorrect = 0;
+
+    dailyQuestions.forEach((q, idx) => {
+      if (answers[idx] === q.a) {
+        score++;
+        if (q.d === 'easy') easyCorrect++;
+        else if (q.d === 'medium') mediumCorrect++;
+        else if (q.d === 'hard') hardCorrect++;
+      }
+    });
+
     // Calculate points: Easy (10 pts), Medium (20 pts), Hard (30 pts)
     const basePoints = (easyCorrect * 10) + (mediumCorrect * 20) + (hardCorrect * 30);
     // Speed bonus: up to 120 extra points if basePoints > 0
     const speedBonus = basePoints > 0 ? Math.max(0, 120 - parseInt(timeTaken)) : 0;
-    // Score * 1000 guarantees more correct answers always give more points
+    // Score * 10 guarantees additional points for correct answers
     const points = (parseInt(score) * 10) + basePoints + speedBonus;
 
     const submission = new QuizSubmission({

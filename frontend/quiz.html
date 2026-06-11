@@ -82,7 +82,7 @@
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 1.25rem;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       padding-bottom: 0.5rem;
     }
 
@@ -223,16 +223,21 @@
       font-size: 4rem;
       margin-bottom: 1rem;
       display: block;
-      filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+      filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.3));
       animation: bounce 2s infinite;
     }
 
     @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
     }
-
-
   </style>
 </head>
 
@@ -258,10 +263,13 @@
       <!-- 1. START SCREEN -->
       <div id="startScreen" class="quiz-screen active">
         <span class="result-emoji">⚽</span>
-        <h3 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem;">Daily Trivia Challenge</h3>
-        <p style="color: var(--text-muted); margin-bottom: 2rem;">Test your World Cup knowledge! Get 5 mixed difficulty questions every day.</p>
-        
-        <div id="quizStatusBox" style="margin-bottom: 2rem; display: none; padding: 1.25rem; background: rgba(0, 230, 118, 0.1); border-radius: 12px; border: 1px solid rgba(0, 230, 118, 0.2);">
+        <h3 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem;">Daily
+          Trivia Challenge</h3>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Test your World Cup knowledge! Get 5 mixed difficulty
+          questions every day.</p>
+
+        <div id="quizStatusBox"
+          style="margin-bottom: 2rem; display: none; padding: 1.25rem; background: rgba(0, 230, 118, 0.1); border-radius: 12px; border: 1px solid rgba(0, 230, 118, 0.2);">
           <span style="color: var(--accent-green); font-weight: 700; font-size: 1rem;">✓ Completed Today</span>
           <p id="todayScoreText" style="font-size: 0.9rem; margin-top: 0.25rem; color: var(--text-muted);"></p>
         </div>
@@ -279,7 +287,7 @@
           <span id="timerText" style="color: #ffd700; font-family: var(--font-display);">0.0s</span>
         </div>
         <div class="quiz-question" id="questionText">Loading question...</div>
-        
+
         <div class="options-grid" id="optionsContainer">
           <button class="option-btn">Option 1</button>
           <button class="option-btn">Option 2</button>
@@ -299,12 +307,17 @@
       <!-- 3. RESULTS SCREEN -->
       <div id="resultScreen" class="quiz-screen">
         <span class="result-emoji" id="resultEmoji">🏆</span>
-        <h3 style="font-family: var(--font-display); font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem;" id="resultTitle">QUIZ COMPLETE!</h3>
-        <p style="font-size: 1.15rem; color: var(--accent-green); font-weight: 700; margin-bottom: 0.25rem;" id="resultScore">Score: 5/5 Correct</p>
-        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;" id="resultTimeText">Time taken: 0s</p>
-        <p style="font-size: 1.1rem; color: #ffd700; font-weight: 700; margin-bottom: 1.5rem;" id="resultPoints">Points Earned: 0</p>
-        <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5;" id="resultText">Amazing! You are a certified World Cup expert.</p>
-        
+        <h3 style="font-family: var(--font-display); font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem;"
+          id="resultTitle">QUIZ COMPLETE!</h3>
+        <p style="font-size: 1.15rem; color: var(--accent-green); font-weight: 700; margin-bottom: 0.25rem;"
+          id="resultScore">Score: 5/5 Correct</p>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;" id="resultTimeText">Time taken: 0s
+        </p>
+        <p style="font-size: 1.1rem; color: #ffd700; font-weight: 700; margin-bottom: 1.5rem;" id="resultPoints">Points
+          Earned: 0</p>
+        <p style="color: var(--text-muted); margin-bottom: 2.5rem; line-height: 1.5;" id="resultText">Amazing! You are a
+          certified World Cup expert.</p>
+
         <button class="btn btn-primary" id="finishBtn" style="margin-bottom: 2rem;">BACK TO GAMES</button>
 
 
@@ -340,7 +353,7 @@
         osc.frequency.setValueAtTime(523.25, now); // C5
         gain.gain.setValueAtTime(0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-        
+
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
         osc2.connect(gain2);
@@ -388,62 +401,14 @@
       document.getElementById('soundToggle').innerHTML = soundEnabled ? '<span>🔊</span> Sound ON' : '<span>🔇</span> Sound OFF';
     });
 
-    // --- QUIZ QUESTIONS POOL (MIX OF DIFFICULTIES) ---
-    const questionsPool = {
-      easy: [
-        { q: "Which country won the first FIFA World Cup in 1930?", o: ["Brazil", "Argentina", "Uruguay", "Italy"], a: 2, d: "easy" },
-        { q: "Which country has won the most FIFA World Cup titles?", o: ["Germany", "Italy", "Brazil", "Argentina"], a: 2, d: "easy" },
-        { q: "Which country hosted the 2010 FIFA World Cup?", o: ["South Africa", "Brazil", "Germany", "Japan"], a: 0, d: "easy" },
-        { q: "Which country won the 2022 FIFA World Cup in Qatar?", o: ["France", "Croatia", "Argentina", "Morocco"], a: 2, d: "easy" },
-        { q: "What is the maximum number of substitutions allowed in regular time at the 2022 World Cup?", o: ["3", "4", "5", "6"], a: 2, d: "easy" },
-        { q: "How many teams competed in the 2022 FIFA World Cup?", o: ["24", "32", "48", "16"], a: 1, d: "easy" },
-        { q: "Which nation has played in every single FIFA World Cup tournament?", o: ["Germany", "Italy", "Brazil", "Argentina"], a: 2, d: "easy" },
-        { q: "What color card does a referee show to eject a player from a match?", o: ["Yellow", "Red", "Green", "Blue"], a: 1, d: "easy" }
-      ],
-      medium: [
-        { q: "Who is the all-time top goalscorer in FIFA World Cup history?", o: ["Pelé", "Cristiano Ronaldo", "Lionel Messi", "Miroslav Klose"], a: 3, d: "medium" },
-        { q: "Who scored the famous 'Hand of God' goal in the 1986 World Cup?", o: ["Pelé", "Diego Maradona", "Lionel Messi", "Mario Kempes"], a: 1, d: "medium" },
-        { q: "In which year did France win their first FIFA World Cup?", o: ["1998", "2006", "2018", "1982"], a: 0, d: "medium" },
-        { q: "Which player won the Golden Ball (best player) at the 2014 World Cup?", o: ["Thomas Müller", "Lionel Messi", "James Rodríguez", "Neymar"], a: 1, d: "medium" },
-        { q: "Who scored a hat-trick in the 2022 World Cup final?", o: ["Lionel Messi", "Kylian Mbappé", "Olivier Giroud", "Angel Di Maria"], a: 1, d: "medium" },
-        { q: "What was the official match ball of the 1970 World Cup in Mexico, setting the black-and-white panel look?", o: ["Tango", "Fevernova", "Jabulani", "Telstar"], a: 3, d: "medium" },
-        { q: "Who was the manager of the England team at the 2018 FIFA World Cup?", o: ["Roy Hodgson", "Sam Allardyce", "Gareth Southgate", "Sven-Göran Eriksson"], a: 2, d: "medium" },
-        { q: "Which country finished in third place at the 2022 FIFA World Cup?", o: ["Morocco", "Croatia", "France", "Argentina"], a: 1, d: "medium" }
-      ],
-      hard: [
-        { q: "Which player has won the most FIFA World Cup trophies as a player?", o: ["Pelé", "Diego Maradona", "Zinedine Zidane", "Cafu"], a: 0, d: "hard" },
-        { q: "Which country made their World Cup debut in 2018 as the smallest nation by population to qualify?", o: ["Panama", "Iceland", "Jamaica", "Trinidad & Tobago"], a: 1, d: "hard" },
-        { q: "Which nation was banned from the 1950 World Cup for refusing to play barefoot?", o: ["India", "Japan", "Burma", "Turkey"], a: 0, d: "hard" },
-        { q: "Who is the youngest player to score in a FIFA World Cup final?", o: ["Kylian Mbappé", "Pelé", "Ronaldo", "Lionel Messi"], a: 1, d: "hard" },
-        { q: "Which country became the first African nation to reach a World Cup semi-final?", o: ["Cameroon", "Senegal", "Ghana", "Morocco"], a: 3, d: "hard" },
-        { q: "Which goalkeeper holds the record for the most saves in a single World Cup match (16 saves in 2014)?", o: ["Tim Howard", "Manuel Neuer", "Guillermo Ochoa", "Keylor Navas"], a: 0, d: "hard" }
-      ]
-    };
-
-    // --- DAILY QUESTION DETERMINISTIC SELECTION ---
+    // --- DAILY QUIZ LOAD AND SELECTION ---
     const today = new Date();
     const dateString = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
-    
-    // Deterministic selection seed
-    const daySeed = today.getDate() + today.getMonth();
 
-    // Select 2 Easy, 2 Medium, 1 Hard
-    const easyQ1 = questionsPool.easy[daySeed % questionsPool.easy.length];
-    const easyQ2 = questionsPool.easy[(daySeed + 1) % questionsPool.easy.length];
-    const medQ1 = questionsPool.medium[daySeed % questionsPool.medium.length];
-    const medQ2 = questionsPool.medium[(daySeed + 1) % questionsPool.medium.length];
-    const hardQ = questionsPool.hard[daySeed % questionsPool.hard.length];
-
-    // Combine to 5 questions
-    const dailyQuestions = [easyQ1, easyQ2, medQ1, medQ2, hardQ];
-
+    let dailyQuestions = [];
     let currentQ = 0;
     let score = 0;
-    
-    // Sub-difficulty scores to help backend calculate correct points
-    let easyCorrect = 0;
-    let mediumCorrect = 0;
-    let hardCorrect = 0;
+    let userAnswers = [];
 
     // Timer Variables
     let timerInterval = null;
@@ -461,7 +426,32 @@
       document.getElementById('startBtn').textContent = 'REPLAY QUIZ';
     }
 
+    // Fetch questions from the secure API
+    async function fetchDailyQuestions() {
+      try {
+        const response = await fetch('/api/quiz/daily', {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
+          }
+        });
+        const result = await response.json();
+        if (response.ok && result.success) {
+          dailyQuestions = result.questions;
+          document.getElementById('startBtn').disabled = false;
+        } else {
+          document.getElementById('questionText').textContent = 'Failed to load questions. Please refresh.';
+          document.getElementById('startBtn').disabled = true;
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('questionText').textContent = 'Error connecting to server. Please try again.';
+        document.getElementById('startBtn').disabled = true;
+      }
+    }
 
+    // Initialize fetching on page load
+    document.getElementById('startBtn').disabled = true;
+    fetchDailyQuestions();
 
     // --- SCREEN NAVIGATION ---
     function showScreen(screenId) {
@@ -474,11 +464,13 @@
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
       }
+      if (dailyQuestions.length === 0) {
+        alert("Quiz is loading. Please wait a moment.");
+        return;
+      }
       currentQ = 0;
       score = 0;
-      easyCorrect = 0;
-      mediumCorrect = 0;
-      hardCorrect = 0;
+      userAnswers = [];
       
       // Reset indicator dots
       const dots = document.querySelectorAll('.ind-dot');
@@ -532,23 +524,20 @@
 
     function handleAnswer(selectedIdx, btn) {
       const qData = dailyQuestions[currentQ];
-      const correctIdx = qData.a;
+      // The backend obfuscates the correct answer using base64 encoding (e.g. atob("Mg==") -> 2)
+      const correctIdx = parseInt(atob(qData.a));
       
       const allButtons = document.querySelectorAll('.option-btn');
       allButtons.forEach(b => b.disabled = true); // lock buttons
 
       const dots = document.querySelectorAll('.ind-dot');
+      userAnswers.push(selectedIdx);
 
       if (selectedIdx === correctIdx) {
         btn.classList.add('correct');
         score++;
         dots[currentQ].classList.add('correct');
         playSound('correct');
-
-        // Increment difficulty tracking
-        if (qData.d === 'easy') easyCorrect++;
-        else if (qData.d === 'medium') mediumCorrect++;
-        else if (qData.d === 'hard') hardCorrect++;
       } else {
         btn.classList.add('wrong');
         allButtons[correctIdx].classList.add('correct');
@@ -579,31 +568,29 @@
       try {
         const response = await fetch('/api/quiz/submit', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${user.token}`
           },
           body: JSON.stringify({
             username: user.username,
             token: user.token,
-            score,
-            timeTaken,
-            easyCorrect,
-            mediumCorrect,
-            hardCorrect
+            answers: userAnswers,
+            timeTaken
           })
         });
 
         const result = await response.json();
-        
+
         if (response.ok && result.success) {
           // Save completion state
+          const finalScore = result.score;
           localStorage.setItem('quizCompletedDate_' + user.username, dateString);
-          localStorage.setItem('quizCompletedScore_' + user.username, score);
+          localStorage.setItem('quizCompletedScore_' + user.username, finalScore);
           localStorage.setItem('quizCompletedPoints_' + user.username, result.points);
 
           // Update elements
-          document.getElementById('resultScore').textContent = `Score: ${score}/5 Correct`;
+          document.getElementById('resultScore').textContent = `Score: ${finalScore}/5 Correct`;
           document.getElementById('resultTimeText').textContent = `Time taken: ${timeTaken}s`;
           document.getElementById('resultPoints').textContent = `Points Earned: ${result.points}`;
 
@@ -611,23 +598,23 @@
           const titleEl = document.getElementById('resultTitle');
           const textEl = document.getElementById('resultText');
 
-          if (score === 5) {
+          if (finalScore === 5) {
             emojiEl.textContent = '🏆';
             titleEl.textContent = 'PERFECT SCORE!';
             titleEl.style.color = 'var(--accent-green)';
             textEl.textContent = "Spectacular! You answered every question correctly. You are officially a World Cup Legend!";
             playSound('complete_perfect');
-          } else if (score >= 3) {
+          } else if (finalScore >= 3) {
             emojiEl.textContent = '⚽';
             titleEl.textContent = 'GREAT EFFORT!';
             titleEl.style.color = '#ffd700';
-            textEl.textContent = `Excellent job! You scored ${score}/5 correct questions. Check back tomorrow for a new set of questions.`;
+            textEl.textContent = `Excellent job! You scored ${finalScore}/5 correct questions. Check back tomorrow for a new set of questions.`;
             playSound('complete_pass');
           } else {
             emojiEl.textContent = '❌';
             titleEl.textContent = 'KEEP PRACTICING!';
             titleEl.style.color = '#ef5350';
-            textEl.textContent = `You got ${score}/5 correct answers. Don't worry, a new quiz will be available tomorrow. Keep learning!`;
+            textEl.textContent = `You got ${finalScore}/5 correct answers. Don't worry, a new quiz will be available tomorrow. Keep learning!`;
             playSound('wrong');
           }
         } else {
@@ -644,8 +631,6 @@
         document.getElementById('resultScore').textContent = `Network Error`;
         document.getElementById('resultPoints').textContent = 'Offline attempt completed.';
       }
-
-
     }
 
     document.getElementById('finishBtn').addEventListener('click', () => {

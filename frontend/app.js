@@ -75,6 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
       initScoreUpdatePage();
     } else if (path.includes('settings.html')) {
       initSettingsPage();
+    } else if (path.includes('admin_predictions.html')) {
+      initAdminPredictionsPage();
     } else if (path.includes('leaderboard.html')) {
       initLeaderboardPage();
     } else if (path.includes('standings.html')) {
@@ -124,6 +126,11 @@ function initGlobalUI() {
   const adminSettingsLink = document.getElementById('adminSettingsLink');
   if (adminSettingsLink) {
     adminSettingsLink.style.display = (user.role === 'admin') ? 'block' : 'none';
+  }
+
+  const adminPredictionsLink = document.getElementById('adminPredictionsLink');
+  if (adminPredictionsLink) {
+    adminPredictionsLink.style.display = (user.role === 'admin') ? 'block' : 'none';
   }
 
   // Dynamic menu rewrite for admin
@@ -1689,3 +1696,224 @@ async function initSettingsPage() {
   // Initial load
   await fetchUsers();
 }
+
+// --- ADMIN PREDICTIONS TRACKING PAGE LOGIC ---
+async function initAdminPredictionsPage() {
+  const user = window.getCurrentUser();
+  if (!user || user.role !== 'admin') {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  const container = document.getElementById('adminPredictionsContainer');
+  const filterMatch = document.getElementById('filterMatch');
+  const filterOutcome = document.getElementById('filterOutcome');
+  const searchPlayer = document.getElementById('searchPlayer');
+
+  if (!container) return;
+
+  let allMatches = [];
+  let allPredictions = [];
+  let allUsers = [];
+
+  const getPredictionOutcome = (pred, match) => {
+    if (match.status === 'Upcoming') {
+      return { label: 'Pending', points: 0, badge: 'badge-pending' };
+    }
+    const ap1 = match.team1Score;
+    const ap2 = match.team2Score;
+    const pp1 = pred.team1Score;
+    const pp2 = pred.team2Score;
+
+    if (ap1 === null || ap2 === null) {
+      return { label: 'Pending', points: 0, badge: 'badge-pending' };
+    }
+
+    if (pp1 === ap1 && pp2 === ap2) {
+      return { label: 'Exact Score', points: 5, badge: 'badge-exact' };
+    } else if (
+      (pp1 > pp2 && ap1 > ap2) ||
+      (pp1 < pp2 && ap1 < ap2) ||
+      (pp1 === pp2 && ap1 === ap2)
+    ) {
+      return { label: 'Correct Winner', points: 3, badge: 'badge-winner' };
+    } else {
+      return { label: 'Wrong Outcome', points: 0, badge: 'badge-wrong' };
+    }
+  };
+
+  const calculateOverallStats = () => {
+    const totalPredictionsEl = document.getElementById('statTotalPredictions');
+    const totalPredictorsEl = document.getElementById('statTotalPredictors');
+    const exactScoresEl = document.getElementById('statExactScores');
+    const avgPointsEl = document.getElementById('statAvgPoints');
+
+    const totalPreds = allPredictions.length;
+    
+    // Count unique predictors
+    const uniquePredictors = new Set(allPredictions.map(p => p.username));
+    const totalPredictors = uniquePredictors.size;
+
+    // Count exact matches and calculate total points distributed
+    let exactCount = 0;
+    let totalPoints = 0;
+
+    allPredictions.forEach(pred => {
+      const match = allMatches.find(m => m.id === pred.matchId);
+      if (match) {
+        const outcome = getPredictionOutcome(pred, match);
+        totalPoints += outcome.points;
+        if (outcome.label === 'Exact Score') {
+          exactCount++;
+        }
+      }
+    });
+
+    const avgPoints = totalPredictors > 0 ? (totalPoints / totalPredictors).toFixed(1) : '0.0';
+
+    if (totalPredictionsEl) totalPredictionsEl.textContent = totalPreds;
+    if (totalPredictorsEl) totalPredictorsEl.textContent = totalPredictors;
+    if (exactScoresEl) exactScoresEl.textContent = exactCount;
+    if (avgPointsEl) avgPointsEl.textContent = avgPoints;
+  };
+
+  const populateMatchFilter = () => {
+    if (!filterMatch) return;
+    filterMatch.innerHTML = '<option value="All">All Matches</option>';
+    allMatches.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = `${m.team1} vs ${m.team2} (${m.group})`;
+      filterMatch.appendChild(opt);
+    });
+  };
+
+  const renderPredictions = (predsList) => {
+    container.innerHTML = '';
+
+    if (predsList.length === 0) {
+      container.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 3rem;">No predictions found matching the filters.</td></tr>';
+      return;
+    }
+
+    predsList.forEach(pred => {
+      const match = allMatches.find(m => m.id === pred.matchId);
+      if (!match) return;
+
+      const outcome = getPredictionOutcome(pred, match);
+      const row = document.createElement('tr');
+
+      const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;
+      const flag2Url = `https://flagcdn.com/24x18/${match.team2Code}.png`;
+
+      let actualScoreText = 'VS';
+      if (match.status === 'Completed' || match.status === 'Live') {
+        actualScoreText = `${match.team1Score} - ${match.team2Score}`;
+      }
+
+      row.innerHTML = `
+        <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="user-avatar">${pred.username.charAt(0).toUpperCase()}</div>
+            <span style="font-weight:600;">${pred.username}</span>
+          </div>
+        </td>
+        <td>
+          <div class="match-display">
+            <div class="team-info">
+              <img class="flag-icon" src="${flag1Url}" alt="${match.team1}">
+              <span>${match.team1}</span>
+            </div>
+            <span class="match-vs">VS</span>
+            <div class="team-info">
+              <span>${match.team2}</span>
+              <img class="flag-icon" src="${flag2Url}" alt="${match.team2}">
+            </div>
+          </div>
+        </td>
+        <td style="text-align: center; font-weight: 600;">${match.group}</td>
+        <td style="text-align: center; font-weight: 700; color: var(--accent-green);">
+          ${pred.team1Score} - ${pred.team2Score}
+        </td>
+        <td style="text-align: center;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <span style="font-weight: 700; font-family: var(--font-display);">${actualScoreText}</span>
+            <span class="badge ${outcome.badge}" style="font-size: 0.6rem; padding: 1px 6px;">${outcome.label}</span>
+          </div>
+        </td>
+        <td style="text-align: right; font-weight: 700; color: ${outcome.points > 0 ? 'var(--accent-green)' : 'var(--text-muted)'};">
+          +${outcome.points} pts
+        </td>
+      `;
+      container.appendChild(row);
+    });
+  };
+
+  const applyFilters = () => {
+    const searchVal = searchPlayer ? searchPlayer.value.toLowerCase().trim() : '';
+    const matchVal = filterMatch ? filterMatch.value : 'All';
+    const outcomeVal = filterOutcome ? filterOutcome.value : 'All';
+
+    const filtered = allPredictions.filter(pred => {
+      const match = allMatches.find(m => m.id === pred.matchId);
+      if (!match) return false;
+
+      // 1. Player Search Filter
+      const matchesSearch = pred.username.toLowerCase().includes(searchVal);
+
+      // 2. Match Filter
+      const matchesMatch = matchVal === 'All' || pred.matchId.toString() === matchVal;
+
+      // 3. Outcome Filter
+      let matchesOutcome = true;
+      if (outcomeVal !== 'All') {
+        const outcome = getPredictionOutcome(pred, match);
+        if (outcomeVal === 'Exact') {
+          matchesOutcome = outcome.label === 'Exact Score';
+        } else if (outcomeVal === 'Winner') {
+          matchesOutcome = outcome.label === 'Correct Winner';
+        } else if (outcomeVal === 'Wrong') {
+          matchesOutcome = outcome.label === 'Wrong Outcome';
+        } else if (outcomeVal === 'Pending') {
+          matchesOutcome = outcome.label === 'Pending';
+        }
+      }
+
+      return matchesSearch && matchesMatch && matchesOutcome;
+    });
+
+    renderPredictions(filtered);
+  };
+
+  try {
+    const response = await fetch(`/api/admin/predictions?username=${encodeURIComponent(user.username)}&token=${encodeURIComponent(user.token)}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      allMatches = data.matches;
+      allPredictions = data.predictions;
+      allUsers = data.users;
+
+      // Sort predictions by username first, and then matchId
+      allPredictions.sort((a, b) => {
+        const userCompare = a.username.localeCompare(b.username);
+        if (userCompare !== 0) return userCompare;
+        return a.matchId - b.matchId;
+      });
+
+      calculateOverallStats();
+      populateMatchFilter();
+      renderPredictions(allPredictions);
+
+      // Bind events
+      if (searchPlayer) searchPlayer.addEventListener('input', applyFilters);
+      if (filterMatch) filterMatch.addEventListener('change', applyFilters);
+      if (filterOutcome) filterOutcome.addEventListener('change', applyFilters);
+    } else {
+      window.showToast(data.message || 'Failed to load predictions', 'error');
+    }
+  } catch (err) {
+    console.error('Failed to initialize admin predictions page:', err);
+    window.showToast('Server connection failed', 'error');
+  }
+}

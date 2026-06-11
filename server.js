@@ -714,6 +714,38 @@ app.get('/api/admin/users', async (req, res) => {
   }
 });
 
+// Admin Predictions Management - List All Predictions
+app.get('/api/admin/predictions', async (req, res) => {
+  const username = req.query.username || req.headers['x-username'];
+  const authHeader = req.headers.authorization;
+  let token = req.query.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!username || !token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing username or token" });
+  }
+
+  try {
+    // Verify admin role and session token
+    const adminUser = await User.findOne({ username: username.trim(), role: 'admin', sessionToken: token });
+    if (!adminUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin role and valid session required" });
+    }
+
+    const matches = await Match.find().sort({ id: 1 });
+    const users = await User.find({ role: 'user', status: { $ne: 'deleted' } }, { pinHash: 0 }).sort({ username: 1 });
+    const predictions = await Prediction.find({});
+
+    return res.json({ success: true, matches, users, predictions });
+  } catch (err) {
+    console.error('Error fetching admin predictions:', err);
+    return res.status(500).json({ success: false, message: "Server error listing predictions" });
+  }
+});
+
+
 // Admin User Management - Delete (Soft Delete) User
 app.post('/api/admin/users/delete', async (req, res) => {
   const { username, token, targetUsername } = req.body;

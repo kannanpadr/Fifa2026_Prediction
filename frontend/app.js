@@ -696,18 +696,33 @@ async function initPredictionPage() {
   const countdownSecs = document.getElementById('countdownSecs');
 
   let pagePredictions = {};
+  let allMatchesList = [];
 
-  // Countdown timer logic
-  // Let's count down to the first match of the World Cup in IST
-  const targetDate = new Date('Jun 07, 2026 10:00:00 GMT+0530').getTime();
-
+  // Countdown timer logic to count down to next match kickoff in IST
   function updateCountdown() {
     const now = new Date().getTime();
-    let difference = targetDate - now;
+    let targetTime = null;
 
-    // Fallback if target date has passed in the actual year (e.g. testing in late 2026),
-    // make a fake rolling 12-hour countdown so the countdown widget always ticks!
-    if (difference <= 0) {
+    if (allMatchesList.length > 0) {
+      // Find the next upcoming match kickoff time
+      const futureMatches = allMatchesList
+        .map(m => ({
+          ...m,
+          kickoffTime: new Date(m.date + ' ' + m.time + ' GMT+0530').getTime()
+        }))
+        .filter(m => m.status === 'Upcoming' && m.kickoffTime > now)
+        .sort((a, b) => a.kickoffTime - b.kickoffTime);
+
+      if (futureMatches.length > 0) {
+        targetTime = futureMatches[0].kickoffTime;
+      }
+    }
+
+    let difference = 0;
+    if (targetTime) {
+      difference = targetTime - now;
+    } else {
+      // Fallback: rolling 12-hour countdown
       const tomorrow = new Date();
       tomorrow.setHours(tomorrow.getHours() + 12);
       difference = tomorrow.getTime() - now;
@@ -732,6 +747,9 @@ async function initPredictionPage() {
   try {
     const matchesResponse = await fetch('/api/matches');
     const matches = await matchesResponse.json();
+    allMatchesList = matches;
+    updateCountdown(); // Trigger immediate update after load
+
 
     const predResponse = await fetch(`/api/predictions/${user.username}`);
     pagePredictions = await predResponse.json();

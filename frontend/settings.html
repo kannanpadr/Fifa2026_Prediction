@@ -120,6 +120,7 @@
             <a href="#" class="dropdown-item">👤 Profile Details</a>
             <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
             <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊 Player Predictions</a>
+            <a href="#" class="dropdown-item" id="adminDownloadDbLink" style="display: none;">📥 Download DB (JSON)</a>
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
             <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
           </div>
@@ -170,6 +171,17 @@
                 <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Deleted</div>
               </div>
             </div>
+          </div>
+
+          <!-- Database Backup Card -->
+          <div class="glass-card" style="display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem;">
+            <h3 class="card-title" style="font-size: 1.05rem; margin-bottom: 0.25rem;"><span>📦</span> Database Backup</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+              Download a complete snapshot of all collections (Users, Matches, Predictions, Leaderboards, Quizzes, and Visitor counter) in standard JSON format.
+            </p>
+            <button class="btn btn-outline-green" id="adminBackupBtn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.6rem; font-weight: 600; cursor: pointer;">
+              📥 Download DB Data (JSON)
+            </button>
           </div>
 
         </div>

@@ -133,6 +133,11 @@ function initGlobalUI() {
     adminPredictionsLink.style.display = (user.role === 'admin') ? 'block' : 'none';
   }
 
+  const adminDownloadDbLink = document.getElementById('adminDownloadDbLink');
+  if (adminDownloadDbLink) {
+    adminDownloadDbLink.style.display = (user.role === 'admin') ? 'block' : 'none';
+  }
+
   // Dynamic menu rewrite for admin
   const navPredictions = document.getElementById('navPredictions');
   const mobNavPredictions = document.getElementById('mobNavPredictions');
@@ -190,6 +195,14 @@ function initGlobalUI() {
     });
   }
 
+  // Download DB Handler
+  if (adminDownloadDbLink) {
+    adminDownloadDbLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.downloadDbBackup(user);
+    });
+  }
+
   // Logout Handler
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) {
@@ -199,6 +212,46 @@ function initGlobalUI() {
       window.location.href = 'login.html';
     });
   }
+
+  // Global helper for DB backup download
+  window.downloadDbBackup = async function (user) {
+    if (!user) return;
+    if (typeof window.showToast === 'function') {
+      window.showToast('Exporting database data...', 'success');
+    }
+    try {
+      const url = `/api/admin/db/export?username=${encodeURIComponent(user.username)}&token=${encodeURIComponent(user.token)}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+      const responseData = await response.json();
+      if (!responseData.success) {
+        throw new Error(responseData.message || 'Export failed');
+      }
+      
+      // Trigger a download in the browser
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(responseData.data, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `fifa_db_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      if (typeof window.showToast === 'function') {
+        window.showToast('Database download complete!', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      if (typeof window.showToast === 'function') {
+        window.showToast('Failed to download DB data', 'error');
+      }
+    }
+  };
 }
 
 // --- LOGIN PAGE LOGIC ---
@@ -1710,6 +1763,14 @@ async function initSettingsPage() {
       window.showToast('Connection error', 'error');
     }
   };
+
+  // Bind Database Backup button
+  const adminBackupBtn = document.getElementById('adminBackupBtn');
+  if (adminBackupBtn) {
+    adminBackupBtn.addEventListener('click', () => {
+      window.downloadDbBackup(user);
+    });
+  }
 
   // Initial load
   await fetchUsers();

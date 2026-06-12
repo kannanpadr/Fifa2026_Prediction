@@ -865,6 +865,54 @@ app.post('/api/admin/users/delete', async (req, res) => {
   }
 });
 
+// Admin DB Management - Export Database Data
+app.get('/api/admin/db/export', async (req, res) => {
+  const username = req.query.username || req.headers['x-username'];
+  const authHeader = req.headers.authorization;
+  let token = req.query.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!username || !token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing username or token" });
+  }
+
+  try {
+    // Verify admin role and session token
+    const adminUser = await User.findOne({ username: username.trim(), role: 'admin', sessionToken: token });
+    if (!adminUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin role and valid session required" });
+    }
+
+    // Fetch all collections in parallel
+    const [users, matches, predictions, quizSubmissions, leaderboardEntries, visitorCounters] = await Promise.all([
+      User.find({}, { pinHash: 0, sessionToken: 0 }), // Exclude pinHash and sessionToken for safety/security
+      Match.find().sort({ id: 1 }),
+      Prediction.find().sort({ submittedAt: -1 }),
+      QuizSubmission.find().sort({ createdAt: -1 }),
+      LeaderboardEntry.find(),
+      VisitorCounter.find()
+    ]);
+
+    return res.json({
+      success: true,
+      exportedAt: new Date().toISOString(),
+      data: {
+        users,
+        matches,
+        predictions,
+        quizSubmissions,
+        leaderboardEntries,
+        visitorCounters
+      }
+    });
+  } catch (err) {
+    console.error('Error exporting database:', err);
+    return res.status(500).json({ success: false, message: "Server error during database export" });
+  }
+});
+
 // Start Server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

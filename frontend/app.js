@@ -60,6 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
   if (path.includes('login.html')) {
     initLoginPage();
+  } else if (path.includes('db_diagnostics.html')) {
+    // Exclude database diagnostics page from authentication check so it can be accessed
+    // directly to diagnose connection issues when login is not working
+    initGlobalUI();
+    initDbDiagnosticsPage();
   } else {
     // If not login page, ensure user is authenticated
     checkAuthRedirect();
@@ -138,6 +143,34 @@ function initGlobalUI() {
     adminDownloadDbLink.style.display = (user.role === 'admin') ? 'block' : 'none';
   }
 
+  // Dynamically inject Admin DB Diagnostics menu item in the profile dropdown if not present
+  const profileDropdown = document.getElementById('profileDropdown');
+  if (profileDropdown && !document.getElementById('adminDbDiagnosticsLink')) {
+    const diagLink = document.createElement('a');
+    diagLink.href = 'db_diagnostics.html';
+    diagLink.className = 'dropdown-item';
+    diagLink.id = 'adminDbDiagnosticsLink';
+    diagLink.style.display = (user.role === 'admin') ? 'block' : 'none';
+    diagLink.innerHTML = '🔌 DB Diagnostics';
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      const divider = logoutBtn.previousElementSibling;
+      if (divider && divider.tagName === 'HR') {
+        profileDropdown.insertBefore(diagLink, divider);
+      } else {
+        profileDropdown.insertBefore(diagLink, logoutBtn);
+      }
+    } else {
+      profileDropdown.appendChild(diagLink);
+    }
+  } else {
+    const adminDbDiagnosticsLink = document.getElementById('adminDbDiagnosticsLink');
+    if (adminDbDiagnosticsLink) {
+      adminDbDiagnosticsLink.style.display = (user.role === 'admin') ? 'block' : 'none';
+    }
+  }
+
   // Dynamic menu rewrite for admin
   const navPredictions = document.getElementById('navPredictions');
   const mobNavPredictions = document.getElementById('mobNavPredictions');
@@ -182,7 +215,6 @@ function initGlobalUI() {
 
   // Profile Dropdown Toggle
   const profileTrigger = document.getElementById('profileTrigger');
-  const profileDropdown = document.getElementById('profileDropdown');
 
   if (profileTrigger && profileDropdown) {
     profileTrigger.addEventListener('click', (e) => {
@@ -1994,5 +2026,75 @@ async function initAdminPredictionsPage() {
   } catch (err) {
     console.error('Failed to initialize admin predictions page:', err);
     window.showToast('Server connection failed', 'error');
+  }
+}
+
+// Database Diagnostics check function
+window.checkDbDiagnostics = async function() {
+  const badgeColors = {
+    connected: '#00e676',
+    disconnected: '#ff5252',
+    connecting: '#ff9800',
+    disconnecting: '#ff9800',
+    unknown: '#94a3b8'
+  };
+
+  try {
+    const response = await fetch('/api/db/status');
+    if (!response.ok) {
+      throw new Error(`HTTP Error ${response.status}`);
+    }
+    const data = await response.json();
+    updateDiagnosticsUI(data);
+  } catch (err) {
+    console.error('[Diagnostics] Failed to fetch database status:', err);
+    updateDiagnosticsUI({
+      readyState: 0,
+      readyStateLabel: 'disconnected',
+      host: 'Failed to connect to backend',
+      dbName: 'N/A',
+      rwTest: `failed: ${err.message}`
+    });
+  }
+
+  function updateDiagnosticsUI(data) {
+    const stateLabel = data.readyStateLabel || 'unknown';
+    const color = badgeColors[stateLabel] || badgeColors.unknown;
+
+    // Diagnostics page elements
+    const dbStateBadge = document.getElementById('dbStateBadge');
+    const dbHost = document.getElementById('dbHost');
+    const dbName = document.getElementById('dbName');
+    const dbRwTest = document.getElementById('dbRwTest');
+
+    if (dbStateBadge) {
+      dbStateBadge.textContent = stateLabel.toUpperCase();
+      dbStateBadge.style.backgroundColor = `rgba(${color === '#00e676' ? '0, 230, 118' : color === '#ff5252' ? '255, 82, 82' : '255, 152, 0'}, 0.12)`;
+      dbStateBadge.style.color = color;
+      dbStateBadge.style.borderColor = `rgba(${color === '#00e676' ? '0, 230, 118' : color === '#ff5252' ? '255, 82, 82' : '255, 152, 0'}, 0.3)`;
+    }
+    if (dbHost) dbHost.textContent = data.host;
+    if (dbName) dbName.textContent = data.dbName;
+    if (dbRwTest) {
+      dbRwTest.textContent = data.rwTest === 'success' ? 'Success' : data.rwTest;
+      dbRwTest.style.color = data.rwTest === 'success' ? '#00e676' : '#ff5252';
+    }
+  }
+};
+
+// Admin DB Diagnostics Page Initializer
+async function initDbDiagnosticsPage() {
+  // Load diagnostics initially
+  await window.checkDbDiagnostics();
+
+  // Bind reload/refresh button
+  const refreshDbDiagBtn = document.getElementById('refreshDbDiagBtn');
+  if (refreshDbDiagBtn) {
+    refreshDbDiagBtn.addEventListener('click', async () => {
+      if (typeof window.showToast === 'function') {
+        window.showToast('Refreshing database status...', 'success');
+      }
+      await window.checkDbDiagnostics();
+    });
   }
 }

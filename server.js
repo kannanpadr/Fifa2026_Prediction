@@ -11,11 +11,20 @@ const bcrypt = require('bcryptjs');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => {
-    console.log('✅ Connected to MongoDB');
-    await seedAdmin();
-  })
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .catch(err => console.error('❌ Initial MongoDB connection error:', err));
+
+mongoose.connection.on('connected', async () => {
+  console.log(`✅ MongoDB connected successfully to database: "${mongoose.connection.name}" on host: "${mongoose.connection.host}" and port: "${mongoose.connection.port}"`);
+  await seedAdmin();
+});
+
+mongoose.connection.on('error', err => {
+  console.error('❌ MongoDB connection error event:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB connection disconnected!');
+});
 
 async function seedAdmin() {
   try {
@@ -58,32 +67,45 @@ const questionsPool = require('./data/questionsPool');
 
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
+  console.log(`[Login Debug] Login attempt started for username/phone: "${username}"`);
   if (!username || !password) {
+    console.log('[Login Debug] Validation failed: Missing username or password');
     return res.status(400).json({ success: false, message: "Username or PIN are required" });
   }
   try {
     // Allow login via username or phone number
-    const user = await User.findOne({ $or: [{ username: username.trim() }, { phone: username.trim() }] });
+    const trimmedUsername = username.trim();
+    console.log(`[Login Debug] Querying database for user: "${trimmedUsername}"`);
+    const user = await User.findOne({ $or: [{ username: trimmedUsername }, { phone: trimmedUsername }] });
     if (!user) {
+      console.log(`[Login Debug] User lookup failed: No user found matching "${trimmedUsername}"`);
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
+    console.log(`[Login Debug] User found: "${user.username}" | Role: "${user.role}" | Status: "${user.status}"`);
+
     if (user.status === 'deleted') {
+      console.log(`[Login Debug] Login blocked: User account status is 'deleted'`);
       return res.status(403).json({ success: false, message: "This account has been deleted/disabled. Please contact admin." });
     }
     let authOk = false;
     if (password) {
+      console.log('[Login Debug] Comparing PIN with bcrypt pinHash');
       const pinMatch = await bcrypt.compare(password, user.pinHash);
+      console.log(`[Login Debug] bcrypt compare outcome: ${pinMatch}`);
       authOk = authOk || pinMatch;
     }
     if (!authOk) {
+      console.log('[Login Debug] Authentication failed: PIN does not match');
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
     // Generate secure session token
     const token = crypto.randomBytes(32).toString('hex');
     user.sessionToken = token;
+    console.log(`[Login Debug] Generating session token for "${user.username}"`);
     await user.save();
+    console.log(`[Login Debug] Login successful for "${user.username}", session token saved`);
 
     return res.json({
       success: true,
@@ -95,8 +117,8 @@ app.post('/api/auth/login', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false, message: "Server error" });
+    console.error('[Login Debug] Server error during login:', err);
+    return res.status(500).json({ success: false, message: `Server error: ${err.message}` });
   }
 });
 
@@ -911,6 +933,41 @@ app.get('/api/admin/db/export', async (req, res) => {
     console.error('Error exporting database:', err);
     return res.status(500).json({ success: false, message: "Server error during database export" });
   }
+});
+
+// Database diagnostics API
+app.get('/api/db/status', async (req, res) => {
+  const status = {
+    readyState: mongoose.connection.readyState,
+    readyStateLabel: 'unknown',
+    host: mongoose.connection.host || 'unknown',
+    port: mongoose.connection.port || 'unknown',
+    dbName: mongoose.connection.name || 'unknown',
+    rwTest: 'pending'
+  };
+
+  switch(status.readyState) {
+    case 0: status.readyStateLabel = 'disconnected'; break;
+    case 1: status.readyStateLabel = 'connected'; break;
+    case 2: status.readyStateLabel = 'connecting'; break;
+    case 3: status.readyStateLabel = 'disconnecting'; break;
+  }
+
+  try {
+    if (status.readyState === 1) {
+      // Run quick query test to verify read/write works
+      // We do a simple findOne on User (does not write, but tests read queries)
+      await User.findOne({ username: '___nonexistent_diagnostics_user___' });
+      status.rwTest = 'success';
+    } else {
+      status.rwTest = 'failed (database not connected)';
+    }
+  } catch (err) {
+    console.error('[DB Diagnostics Debug] Read/Write test failed:', err);
+    status.rwTest = `failed: ${err.message}`;
+  }
+
+  return res.json(status);
 });
 
 // Start Server

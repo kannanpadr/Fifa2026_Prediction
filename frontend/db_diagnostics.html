@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Diagnostics - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .diagnostics-layout {
+      display: grid;
+      grid-template-columns: 1fr 2.2fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 992px) {
+      .diagnostics-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-portal animate-fade-in">
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="games.html" class="navbar-link" id="navGames"><span>🎮</span> Games</a></li>
+            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">A</div>
+            <span class="profile-name">Admin</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
+            <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊 Player Predictions</a>
+            <a href="#" class="dropdown-item" id="adminDownloadDbLink" style="display: none;">📥 Download DB (JSON)</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2rem;">
+        <h1 class="page-title" style="margin-bottom: 0.5rem;">Database Diagnostics</h1>
+        <p class="page-subtitle">Verify MongoDB connection details and perform real-time read/write operational health checks.</p>
+      </div>
+
+      <div class="diagnostics-layout">
+
+        <!-- Left Column: Operations & Info -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+          <div class="glass-card">
+            <h3 class="card-title" style="font-size: 1.05rem;"><span>🛡️</span> Diagnostics Help</h3>
+            <ul class="prediction-rules-list" style="font-size: 0.82rem; padding-left: 0; line-height: 1.6; list-style-type: none; display: flex; flex-direction: column; gap: 8px;">
+              <li>• <strong>Connection State</strong>: Shows current mongoose connection ready state (CONNECTED, CONNECTING, DISCONNECTED).</li>
+              <li>• <strong>Host / Port</strong>: Displays IP or name of the server running MongoDB. Helpful for verifying localhost vs cloud instances.</li>
+              <li>• <strong>Database Name</strong>: Confirms the active database schema selected (typically <code>fifa2026</code>).</li>
+              <li>• <strong>Read/Write Test</strong>: Executes a live query test on backend to confirm database transactions are not blocked or slow.</li>
+            </ul>
+          </div>
+
+          <div class="glass-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <h3 class="card-title" style="font-size: 1.05rem; margin-bottom: 0.25rem;"><span>🔧</span> Diagnostics Actions</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.5rem 0; line-height: 1.4;">
+              Force a real-time status update to check database response times and live state.
+            </p>
+            <button class="btn btn-primary btn-block" id="refreshDbDiagBtn">
+              🔄 Refresh Status
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Status Panel -->
+        <div class="glass-card" style="min-height: 350px; display: flex; flex-direction: column; justify-content: flex-start; padding: 2rem; gap: 1.5rem;">
+          <div>
+            <h2 class="card-title" style="margin-bottom: 1.5rem; font-size: 1.2rem;"><span>🔌</span> Connection Health</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+              
+              <!-- Connection Badge Row -->
+              <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-main);">Database State:</span>
+                <span id="dbStateBadge" class="badge badge-upcoming" style="border: 1px solid transparent; padding: 0.4rem 1rem; font-size: 0.75rem;">CHECKING...</span>
+              </div>
+
+              <!-- Details Grid -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="glass-card" style="padding: 1.25rem; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.03);">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Connected Host</div>
+                  <div id="dbHost" style="font-family: monospace; font-size: 0.95rem; font-weight: 600; color: var(--text-main);">-</div>
+                </div>
+
+                <div class="glass-card" style="padding: 1.25rem; background: rgba(255,255,255,0.01); border-color: rgba(255,255,255,0.03);">
+                  <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">Database Name</div>
+                  <div id="dbName" style="font-family: monospace; font-size: 0.95rem; font-weight: 600; color: var(--text-main);">-</div>
+                </div>
+              </div>
+
+              <!-- R/W Test Result Row -->
+              <div class="glass-card" style="padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; border-color: var(--border-color); background: rgba(15,26,48,0.25);">
+                <div>
+                  <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Read/Write Operational Status</div>
+                  <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Backend validation test querying database collections.</div>
+                </div>
+                <div id="dbRwTest" style="font-size: 1.1rem; font-weight: 800; font-family: var(--font-display);">-</div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="games.html" class="mobile-nav-link" id="mobNavGames">
+        <span class="mobile-nav-icon">🎮</span>
+        <span class="mobile-nav-text">Games</span>
+      </a>
+      <a href="leaderboard.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-text">Leaderboard</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

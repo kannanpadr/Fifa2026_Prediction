@@ -2067,6 +2067,11 @@ window.checkDbDiagnostics = async function() {
     const dbName = document.getElementById('dbName');
     const dbRwTest = document.getElementById('dbRwTest');
 
+    const dbDnsResolved = document.getElementById('dbDnsResolved');
+    const dbTcpSocketTest = document.getElementById('dbTcpSocketTest');
+    const dbSystemInfo = document.getElementById('dbSystemInfo');
+    const ubuntuHintContainer = document.getElementById('ubuntuHintContainer');
+
     if (dbStateBadge) {
       dbStateBadge.textContent = stateLabel.toUpperCase();
       dbStateBadge.style.backgroundColor = `rgba(${color === '#00e676' ? '0, 230, 118' : color === '#ff5252' ? '255, 82, 82' : '255, 152, 0'}, 0.12)`;
@@ -2078,6 +2083,33 @@ window.checkDbDiagnostics = async function() {
     if (dbRwTest) {
       dbRwTest.textContent = data.rwTest === 'success' ? 'Success' : data.rwTest;
       dbRwTest.style.color = data.rwTest === 'success' ? '#00e676' : '#ff5252';
+    }
+
+    if (data.diagnostics) {
+      if (dbDnsResolved) {
+        dbDnsResolved.textContent = Array.isArray(data.diagnostics.dnsResolved) 
+          ? data.diagnostics.dnsResolved.join(', ') 
+          : data.diagnostics.dnsResolved;
+      }
+      if (dbTcpSocketTest) {
+        dbTcpSocketTest.textContent = data.diagnostics.tcpSocketTest;
+        dbTcpSocketTest.style.color = data.diagnostics.tcpSocketTest.includes('succeeded') ? '#00e676' : '#ff5252';
+      }
+      if (dbSystemInfo) {
+        dbSystemInfo.textContent = `${data.diagnostics.platform} | Node ${data.diagnostics.nodeVersion}`;
+      }
+      
+      // Show Ubuntu Hint if localhost resolves to IPv6 and TCP fails
+      if (ubuntuHintContainer) {
+        const hasIPv6 = Array.isArray(data.diagnostics.dnsResolved) && 
+                         data.diagnostics.dnsResolved.some(ip => ip.includes('::1') || ip.includes('IPv6'));
+        const tcpFailed = data.diagnostics.tcpSocketTest.includes('failed');
+        if (hasIPv6 && tcpFailed) {
+          ubuntuHintContainer.style.display = 'block';
+        } else {
+          ubuntuHintContainer.style.display = 'none';
+        }
+      }
     }
   }
 };

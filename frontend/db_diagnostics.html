@@ -131,12 +131,26 @@
               </div>
 
               <!-- R/W Test Result Row -->
-              <div class="glass-card" style="padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; border-color: var(--border-color); background: rgba(15,26,48,0.25);">
+              <div class="glass-card" style="padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; border-color: var(--border-color); background: rgba(15, 26, 48, 0.25);">
                 <div>
                   <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);">Read/Write Operational Status</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Backend validation test querying database collections.</div>
                 </div>
                 <div id="dbRwTest" style="font-size: 1.1rem; font-weight: 800; font-family: var(--font-display);">-</div>
+              </div>
+
+              <!-- Deep Network & System Diagnostics (Helpful for Ubuntu/Server debugging) -->
+              <div class="glass-card" style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; border-color: var(--border-color); background: rgba(15, 26, 48, 0.15);">
+                <div style="font-weight: 700; color: var(--text-main); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">🔍 Deep Network Diagnostics (Ubuntu/Server Check)</div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+                  <div style="display: flex; justify-content: space-between;"><span>DNS Resolved IPs:</span> <span id="dbDnsResolved" style="font-family: monospace; color: var(--text-main);">-</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>Raw TCP Port Status:</span> <span id="dbTcpSocketTest" style="font-family: monospace; color: var(--text-main);">-</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span>System Environment:</span> <span id="dbSystemInfo" style="color: var(--text-main); font-size: 0.75rem;">-</span></div>
+                </div>
+                <!-- Interactive Ubuntu Hint -->
+                <div id="ubuntuHintContainer" style="display: none; font-size: 0.75rem; color: #ff9800; background: rgba(255, 152, 0, 0.08); border: 1px solid rgba(255, 152, 0, 0.2); padding: 0.6rem; border-radius: 8px; margin-top: 0.25rem; line-height: 1.4;">
+                  💡 <strong>Ubuntu Diagnostics:</strong> Localhost resolved to IPv6 (::1). MongoDB on Ubuntu defaults to binding to IPv4 only (127.0.0.1). If connection is failing, replace "localhost" with "127.0.0.1" in your MONGODB_URI in <code>.env</code>.
+                </div>
               </div>
 
             </div>

@@ -9,9 +9,118 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .catch(err => console.error('❌ Initial MongoDB connection error:', err));
+// Connect to MongoDB with detailed diagnostics and debugging (especially for Ubuntu)
+const mongoUri = process.env.MONGODB_URI;
+console.log(`[DB Debug] Attempting to connect to MONGODB_URI: "${mongoUri}"`);
+
+if (!mongoUri) {
+  console.error('❌ MongoDB Connection Error: MONGODB_URI environment variable is undefined or empty!');
+}
+
+const connectionOptions = {
+  serverSelectionTimeoutMS: 5000 // Timeout in 5 seconds to fail fast on connection errors
+};
+
+function runDbConnectionDiagnostics(uri) {
+  const os = require('os');
+  const dns = require('dns');
+  const net = require('net');
+
+  console.log('\n==================================================================');
+  console.log('🔍 RUNNING DATABASE CONNECTION DIAGNOSTICS');
+  console.log('==================================================================');
+  console.log(`OS Platform:      ${process.platform} (${process.arch})`);
+  console.log(`Node.js Version:  ${process.version}`);
+  console.log(`System Name:      ${os.hostname()}`);
+  console.log(`Configured URI:   "${uri}"`);
+
+  let host = 'localhost';
+  let port = 27017;
+  try {
+    if (uri) {
+      const cleanedUri = uri.replace(/^mongodb(\+srv)?:\/\//, '');
+      const mainPart = cleanedUri.split('/')[0];
+      const hostPort = mainPart.split('@').pop();
+      const parts = hostPort.split(':');
+      host = parts[0];
+      if (parts.length > 1) {
+        port = parseInt(parts[1]);
+      }
+    }
+  } catch (e) {
+    console.error('[Diagnostics] Failed parsing host/port from URI:', e.message);
+  }
+
+  console.log(`Parsed Host:      "${host}"`);
+  console.log(`Parsed Port:      ${port}`);
+
+  // 1. DNS Resolution Test
+  dns.lookup(host, { all: true }, (err, addresses) => {
+    if (err) {
+      console.error(`❌ DNS Lookup failed for host "${host}":`, err.message);
+    } else {
+      console.log(`🔍 DNS Lookup for "${host}" returned:`);
+      addresses.forEach(addr => {
+        console.log(`  - IP Address: ${addr.address} (IPv${addr.family})`);
+      });
+
+      // Special Ubuntu diagnostic alert (IPv6 vs IPv4 bind issue)
+      const hasIPv6 = addresses.some(a => a.family === 6);
+      if (host === 'localhost' && hasIPv6 && process.platform !== 'win32') {
+        console.warn('\n💡 UBUNTU DIAGNOSTIC HINT:');
+        console.warn('   "localhost" resolved to IPv6 (::1). MongoDB on Ubuntu defaults to binding to IPv4 only (127.0.0.1).');
+        console.warn('   If the connection fails, change MONGODB_URI host from "localhost" to "127.0.0.1" in .env!');
+      }
+    }
+
+    // 2. Raw TCP Port Socket Test
+    console.log(`\n🔌 Opening TCP Socket to ${host}:${port}...`);
+    const socket = net.createConnection({ host, port, timeout: 3000 });
+
+    socket.on('connect', () => {
+      console.log(`✅ TCP socket connection to ${host}:${port} SUCCEEDED! Port is listening.`);
+      console.log('   -> MongoDB service is running. If mongoose still fails, verify credentials/authSource.');
+      socket.end();
+    });
+
+    socket.on('error', (sockErr) => {
+      console.error(`❌ TCP socket connection to ${host}:${port} FAILED:`, sockErr.message);
+      if (sockErr.code === 'ECONNREFUSED') {
+        console.error('   -> Port is closed (ECONNREFUSED). MongoDB is likely stopped or not running on this host/port.');
+        console.error('   -> Ubuntu commands to start/verify MongoDB:');
+        console.error('      sudo systemctl status mongod');
+        console.error('      sudo systemctl start mongod');
+      } else if (sockErr.code === 'ETIMEDOUT') {
+        console.error('   -> Connection timed out (ETIMEDOUT). Check Ubuntu UFW firewall rules or security groups.');
+      }
+    });
+
+    socket.on('timeout', () => {
+      console.error(`❌ TCP socket connection to ${host}:${port} timed out (3000ms reached).`);
+      socket.destroy();
+    });
+  });
+}
+
+mongoose.connect(mongoUri, connectionOptions)
+  .then(() => {
+    // Handled by mongoose.connection.on('connected') listener
+  })
+  .catch(err => {
+    console.error('❌ MongoDB connection attempt failed:');
+    console.error('--- BEGIN CONNECTION ERROR DETAILS ---');
+    console.error(`Error Name:    ${err.name}`);
+    console.error(`Error Message: ${err.message}`);
+    if (err.code) console.error(`Error Code:    ${err.code}`);
+    if (err.syscall) console.error(`Syscall:       ${err.syscall}`);
+    if (err.hostname) console.error(`Hostname:      ${err.hostname}`);
+    if (err.port) console.error(`Port:          ${err.port}`);
+    console.error(err.stack);
+    console.error('--- END CONNECTION ERROR DETAILS ---');
+
+    // Run custom deep network/system diagnostics
+    runDbConnectionDiagnostics(mongoUri);
+  });
 
 mongoose.connection.on('connected', async () => {
   console.log(`✅ MongoDB connected successfully to database: "${mongoose.connection.name}" on host: "${mongoose.connection.host}" and port: "${mongoose.connection.port}"`);
@@ -19,7 +128,8 @@ mongoose.connection.on('connected', async () => {
 });
 
 mongoose.connection.on('error', err => {
-  console.error('❌ MongoDB connection error event:', err);
+  console.error('❌ MongoDB connection error event triggered:');
+  console.error(err);
 });
 
 mongoose.connection.on('disconnected', () => {
@@ -935,15 +1045,24 @@ app.get('/api/admin/db/export', async (req, res) => {
   }
 });
 
-// Database diagnostics API
+// Database diagnostics API with deep DNS and TCP checks
 app.get('/api/db/status', async (req, res) => {
+  const dnsPromises = require('dns').promises;
+  const net = require('net');
+
   const status = {
     readyState: mongoose.connection.readyState,
     readyStateLabel: 'unknown',
     host: mongoose.connection.host || 'unknown',
     port: mongoose.connection.port || 'unknown',
     dbName: mongoose.connection.name || 'unknown',
-    rwTest: 'pending'
+    rwTest: 'pending',
+    diagnostics: {
+      platform: process.platform,
+      nodeVersion: process.version,
+      dnsResolved: [],
+      tcpSocketTest: 'pending'
+    }
   };
 
   switch(status.readyState) {
@@ -952,6 +1071,48 @@ app.get('/api/db/status', async (req, res) => {
     case 2: status.readyStateLabel = 'connecting'; break;
     case 3: status.readyStateLabel = 'disconnecting'; break;
   }
+
+  // Parse host/port from URI to test raw TCP connection if mongoose failed to connect
+  let targetHost = status.host;
+  let targetPort = status.port;
+
+  if (targetHost === 'unknown' || targetHost === 'localhost') {
+    try {
+      const uri = process.env.MONGODB_URI || '';
+      const cleanedUri = uri.replace(/^mongodb(\+srv)?:\/\//, '');
+      const mainPart = cleanedUri.split('/')[0];
+      const hostPort = mainPart.split('@').pop();
+      const parts = hostPort.split(':');
+      targetHost = parts[0] || 'localhost';
+      targetPort = parts[1] ? parseInt(parts[1]) : 27017;
+    } catch (e) {
+      // ignore parsing error
+    }
+  }
+
+  // Perform DNS resolution in background/promise
+  try {
+    const lookupResult = await dnsPromises.lookup(targetHost, { all: true });
+    status.diagnostics.dnsResolved = lookupResult.map(addr => `${addr.address} (IPv${addr.family})`);
+  } catch (dnsErr) {
+    status.diagnostics.dnsResolved = [`Lookup failed: ${dnsErr.message}`];
+  }
+
+  // Perform TCP port test
+  status.diagnostics.tcpSocketTest = await new Promise((resolve) => {
+    const socket = net.createConnection({ host: targetHost, port: targetPort, timeout: 2000 });
+    socket.on('connect', () => {
+      resolve('succeeded (port is open)');
+      socket.end();
+    });
+    socket.on('error', (err) => {
+      resolve(`failed: ${err.message}`);
+    });
+    socket.on('timeout', () => {
+      resolve('failed: timed out after 2000ms');
+      socket.destroy();
+    });
+  });
 
   try {
     if (status.readyState === 1) {

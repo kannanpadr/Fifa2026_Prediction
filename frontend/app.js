@@ -503,7 +503,14 @@ async function initDashboardPage() {
 
     // Calculate prediction percentage/stats
     const activeDate = getEarliestActiveDate(matches);
-    const upcomingMatches = matches.filter(m => m.status === 'Upcoming' && m.date === activeDate);
+    const upcomingMatches = matches.filter(m => {
+      if (m.status !== 'Upcoming') return false;
+      if (m.date === activeDate) return true;
+      const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
+      const now = new Date().getTime();
+      const isOpen = (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+      return isOpen;
+    });
     const totalPredictedCount = Object.keys(predictions).length;
 
     const matchesPredictedEl = document.getElementById('statPredictedMatches');
@@ -840,11 +847,17 @@ async function initPredictionPage() {
     pagePredictions = await predResponse.json();
 
     // Render list of predict cards
+    const now = new Date().getTime();
     const activeDate = getEarliestActiveDate(matches);
-    const upcomingMatches = matches.filter(m => m.status === 'Upcoming' && m.date === activeDate);
+    const upcomingMatches = matches.filter(m => {
+      if (m.status !== 'Upcoming') return false;
+      if (m.date === activeDate) return true;
+      const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
+      const isOpen = (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+      return isOpen;
+    });
 
     // Calculate if any match is open for prediction within its 24h window
-    const now = new Date().getTime();
     const anyOpen = upcomingMatches.some(m => {
       const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
       return (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);

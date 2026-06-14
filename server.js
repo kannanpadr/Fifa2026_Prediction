@@ -571,8 +571,8 @@ app.post('/api/predictions', async (req, res) => {
       const match = allMatches.find(m => m.id === matchId);
       if (!match) continue;
 
-      // Only allow prediction if status is 'Upcoming' and the date matches the earliest active matchday date
-      if (match.date !== earliestDateStr || match.status !== 'Upcoming') {
+      // Only allow prediction if status is 'Upcoming'
+      if (match.status !== 'Upcoming') {
         continue;
       }
 

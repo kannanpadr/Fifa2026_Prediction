@@ -691,7 +691,7 @@ const INITIAL_GROUPS = {
     { name: 'Mexico', code: 'mx' },
     { name: 'South Korea', code: 'kr' },
     { name: 'South Africa', code: 'za' },
-    { name: 'Czechia', code: 'cz' }
+    { name: 'Czech Republic', code: 'cz' }
   ],
   B: [
     { name: 'Canada', code: 'ca' },
@@ -706,7 +706,7 @@ const INITIAL_GROUPS = {
     { name: 'Haiti', code: 'ht' }
   ],
   D: [
-    { name: 'USA', code: 'us' },
+    { name: 'United States', code: 'us' },
     { name: 'Paraguay', code: 'py' },
     { name: 'Australia', code: 'au' },
     { name: 'Türkiye', code: 'tr' }
@@ -733,7 +733,7 @@ const INITIAL_GROUPS = {
     { name: 'Spain', code: 'es' },
     { name: 'Uruguay', code: 'uy' },
     { name: 'Saudi Arabia', code: 'sa' },
-    { name: 'Cape Verde', code: 'cv' }
+    { name: 'Cabo Verde', code: 'cv' }
   ],
   I: [
     { name: 'France', code: 'fr' },
@@ -751,7 +751,7 @@ const INITIAL_GROUPS = {
     { name: 'Portugal', code: 'pt' },
     { name: 'Colombia', code: 'co' },
     { name: 'Uzbekistan', code: 'uz' },
-    { name: 'DR Congo', code: 'cd' }
+    { name: 'Congo DR', code: 'cd' }
   ],
   L: [
     { name: 'England', code: 'gb-eng' },

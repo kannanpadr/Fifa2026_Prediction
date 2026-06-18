@@ -191,6 +191,17 @@
       color: var(--text-muted);
       margin-bottom: 2rem;
     }
+
+    .gold-highlight {
+      background: rgba(255, 215, 0, 0.08) !important;
+      border: 1px solid rgba(255, 215, 0, 0.4) !important;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.2) !important;
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.15); border-color: rgba(255, 215, 0, 0.3); }
+      50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); border-color: rgba(255, 215, 0, 0.7); }
+    }
   </style>
 </head>
 
@@ -226,13 +237,20 @@
             <span class="shot-dot"></span>
           </div>
         </div>
-        <div class="vs-timer">
-          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);">Attempt</div>
-          <div class="timer-val" id="attemptCount">1/5</div>
+        <div class="vs-timer" style="display: flex; flex-direction: column; gap: 6px;">
+          <div>
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); line-height: 1.1;">Attempt</div>
+            <div class="timer-val" id="attemptCount" style="font-size: 1.3rem; line-height: 1.1;">1/5</div>
+          </div>
+          <div style="border-top: 1px solid rgba(255, 255, 255, 0.15); padding-top: 4px;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); line-height: 1.1;">Time</div>
+            <div class="timer-val" id="gameTimerVal" style="font-size: 1.3rem; color: #00ff87; line-height: 1.1;">0.0s</div>
+          </div>
         </div>
-        <div style="text-align: right;">
-          <div class="team-name">High Score</div>
-          <div class="score-box" id="highScoreVal" style="color: #ffd700;">0</div>
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; padding: 6px 12px; border-radius: 8px; border: 1px solid transparent;" id="topScoreContainer">
+          <div class="team-name" style="color: #ffd700; display: flex; align-items: center; gap: 4px; font-size: 0.85rem; line-height: 1.1;">👑 Top Score</div>
+          <div class="score-box" id="highScoreVal" style="color: #ffd700; font-size: 1.5rem; line-height: 1.2;">-</div>
+          <div id="highScoreUser" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; line-height: 1.1;">None</div>
         </div>
       </div>
 
@@ -243,6 +261,10 @@
       <div class="game-modal" id="gameModal">
         <h2 class="modal-title" id="modalTitle">PENALTY CHALLENGE</h2>
         <p class="modal-subtitle" id="modalSubtitle">Beat the goalie to secure victory!</p>
+        <div id="winSubmitSection" style="display: none; margin-bottom: 1.5rem; text-align: center; background: rgba(15, 26, 48, 0.65); padding: 1rem 2rem; border-radius: 12px; border: 1px solid var(--border-color); backdrop-filter: blur(8px);">
+          <p id="gameTimeTakenResult" style="font-size: 1.15rem; color: #00ff87; margin-bottom: 0.5rem; font-weight: 700;"></p>
+          <div id="submitStatusMsg" style="font-size: 0.95rem; font-weight: 700; color: #ffd700;">Saving score automatically to DB...</div>
+        </div>
         <button class="btn btn-primary btn-lg" id="startBtn">START CHALLENGE</button>
       </div>
 
@@ -271,6 +293,34 @@
   </div>
 
   <script>
+    // --- AUTHENTICATION & SESSION CHECK ---
+    const currentUser = JSON.parse(localStorage.getItem('fifa_user') || 'null');
+    if (!currentUser || !currentUser.token) {
+      window.location.href = 'login.html';
+    }
+
+    // --- GAME TIMER VARIABLES ---
+    let timerInterval = null;
+    let startTime = 0;
+    let timeElapsed = 0;
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      startTime = Date.now();
+      timeElapsed = 0;
+      timerInterval = setInterval(() => {
+        timeElapsed = (Date.now() - startTime) / 1000;
+        document.getElementById('gameTimerVal').textContent = timeElapsed.toFixed(1) + 's';
+      }, 100);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
     // --- WEB AUDIO API AUDIO SYNTHESIS ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let soundEnabled = true;
@@ -367,8 +417,27 @@
     let gameActive = false;
     let attempt = 1;
     let score = 0;
-    let highScore = parseInt(localStorage.getItem('penaltyHighScore') || '0');
-    document.getElementById('highScoreVal').textContent = highScore;
+    let globalTopScore = null;
+
+    async function fetchTopScore() {
+      try {
+        const response = await fetch('/api/penalty/top');
+        const data = await response.json();
+        if (data.success && data.topScore) {
+          globalTopScore = data.topScore;
+          document.getElementById('highScoreVal').textContent = `${globalTopScore.goals} Goals (${globalTopScore.timeTaken.toFixed(1)}s)`;
+          document.getElementById('highScoreUser').textContent = `by ${globalTopScore.username}`;
+          document.getElementById('topScoreContainer').classList.add('gold-highlight');
+        } else {
+          document.getElementById('highScoreVal').textContent = '-';
+          document.getElementById('highScoreUser').textContent = 'None';
+          document.getElementById('topScoreContainer').classList.remove('gold-highlight');
+        }
+      } catch (err) {
+        console.error('Failed to fetch top score:', err);
+      }
+    }
+    fetchTopScore();
 
     // Shot Results Tracker
     const shotHistory = []; // Array of 'goal' or 'miss' or 'save'
@@ -580,8 +649,45 @@
       playSound('whistle');
     }
 
+    async function autoSubmitScore(finalScore, finalTime) {
+      const statusMsg = document.getElementById('submitStatusMsg');
+      statusMsg.textContent = 'Saving score automatically to DB...';
+      statusMsg.style.color = '#ffd700';
+
+      try {
+        const response = await fetch('/api/penalty/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.token}`
+          },
+          body: JSON.stringify({
+            username: currentUser.username,
+            token: currentUser.token,
+            goals: finalScore,
+            timeTaken: parseFloat(finalTime.toFixed(2))
+          })
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          statusMsg.textContent = result.isNewHighScore ? '🎉 NEW TOP SCORE RECORDED! 🎉' : 'Score saved automatically to DB.';
+          statusMsg.style.color = result.isNewHighScore ? '#ffd700' : '#00ff87';
+          await fetchTopScore();
+        } else {
+          statusMsg.textContent = 'Auto-save failed: ' + (result.message || 'Error');
+          statusMsg.style.color = '#ef5350';
+        }
+      } catch (err) {
+        console.error(err);
+        statusMsg.textContent = 'Auto-save failed: Network error';
+        statusMsg.style.color = '#ef5350';
+      }
+    }
+
     function endChallenge() {
       gameActive = false;
+      stopTimer();
       
       const modal = document.getElementById('gameModal');
       const startBtn = document.getElementById('startBtn');
@@ -591,18 +697,21 @@
       modal.classList.add('show');
       startBtn.textContent = 'PLAY AGAIN';
 
-      // Save high score
-      if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('penaltyHighScore', highScore);
-        document.getElementById('highScoreVal').textContent = highScore;
-      }
+      // Reset submission UI state
+      document.getElementById('winSubmitSection').style.display = 'none';
+      document.getElementById('submitStatusMsg').textContent = 'Saving score automatically to DB...';
+      document.getElementById('submitStatusMsg').style.color = '#ffd700';
 
       if (score >= 3) {
         modalTitle.textContent = '🏆 CHAMPION! 🏆';
         modalTitle.style.color = 'var(--accent-green)';
         modalSubtitle.textContent = `You scored ${score}/5 goals! Goalie was completely outmatched!`;
         playSound('win');
+
+        // Show win submission section and trigger auto-save
+        document.getElementById('winSubmitSection').style.display = 'block';
+        document.getElementById('gameTimeTakenResult').textContent = `Time Taken: ${timeElapsed.toFixed(2)} seconds`;
+        autoSubmitScore(score, timeElapsed);
       } else {
         modalTitle.textContent = '⚽ DEFEAT! ⚽';
         modalTitle.style.color = '#ef5350';
@@ -994,8 +1103,12 @@
       score = 0;
       shotHistory.length = 0;
       
+      // Reset timer UI
+      document.getElementById('gameTimerVal').textContent = '0.0s';
+      
       resetShot();
       gameActive = true;
+      startTimer();
     });
 
     modal.classList.add('show');

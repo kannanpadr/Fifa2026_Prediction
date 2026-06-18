@@ -170,6 +170,7 @@ const LeaderboardEntry = require('./models/LeaderboardEntry');
 const User = require('./models/User');
 const VisitorCounter = require('./models/VisitorCounter');
 const QuizSubmission = require('./models/QuizSubmission');
+const PenaltyScore = require('./models/PenaltyScore');
 const questionsPool = require('./data/questionsPool');
 
 // Data will be fetched from MongoDB via Mongoose models.
@@ -685,6 +686,79 @@ app.get('/api/leaderboard', async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch leaderboard" });
   }
 });
+
+// --- PENALTY SHOOTOUT ENDPOINTS ---
+
+// Get current global top score (highest goals, then lowest time)
+app.get('/api/penalty/top', async (req, res) => {
+  try {
+    const topScore = await PenaltyScore.findOne()
+      .sort({ goals: -1, timeTaken: 1 })
+      .exec();
+    res.json({ success: true, topScore });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to fetch top score" });
+  }
+});
+
+// Submit a new penalty shootout score
+app.post('/api/penalty/submit', async (req, res) => {
+  const { username, goals, timeTaken } = req.body;
+  if (!username || goals === undefined || timeTaken === undefined) {
+    return res.status(400).json({ success: false, message: "Invalid parameters: username, goals, timeTaken are required" });
+  }
+
+  // Session token authorization check
+  const authHeader = req.headers.authorization;
+  let token = req.body.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing session token" });
+  }
+
+  try {
+    const sessionUser = await User.findOne({ username: username.trim(), sessionToken: token });
+    if (!sessionUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
+    }
+
+    const goalsScored = parseInt(goals);
+    const secondsTaken = parseFloat(timeTaken);
+
+    if (isNaN(goalsScored) || isNaN(secondsTaken) || goalsScored < 3 || goalsScored > 5) {
+      return res.status(400).json({ success: false, message: "Invalid score or time. Only wins (goals >= 3) can be submitted." });
+    }
+
+    // Determine if this beats the current global top score
+    const previousTop = await PenaltyScore.findOne().sort({ goals: -1, timeTaken: 1 }).exec();
+    let isNewHighScore = false;
+
+    if (!previousTop) {
+      isNewHighScore = true;
+    } else if (goalsScored > previousTop.goals) {
+      isNewHighScore = true;
+    } else if (goalsScored === previousTop.goals && secondsTaken < previousTop.timeTaken) {
+      isNewHighScore = true;
+    }
+
+    const newScore = new PenaltyScore({
+      username: username.trim(),
+      goals: goalsScored,
+      timeTaken: secondsTaken
+    });
+
+    await newScore.save();
+    return res.json({ success: true, message: "Score submitted successfully!", isNewHighScore, topScore: newScore });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error saving penalty score" });
+  }
+});
+
 
 const INITIAL_GROUPS = {
   A: [

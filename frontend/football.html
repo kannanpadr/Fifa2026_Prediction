@@ -14,13 +14,23 @@
     }
 
     .game-layout {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 1.5rem;
       text-align: center;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .game-layout {
+        grid-template-columns: 1fr;
+      }
     }
 
     .game-header {
+      grid-column: 1 / -1;
       margin-bottom: 1rem;
       display: flex;
       justify-content: space-between;
@@ -125,6 +135,59 @@
     .btn-sound:hover {
       background: rgba(0, 230, 118, 0.1);
       border-color: var(--accent-green);
+    }
+
+    /* Leaderboard Sidebar */
+    .leaderboard-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .leaderboard-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--accent-green);
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .mini-table th {
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .mini-table td {
+      padding: 0.6rem 0.5rem;
+      font-size: 0.8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .mini-table tr.active-user {
+      background: rgba(0, 230, 118, 0.06);
+    }
+
+    .mini-table tr.gold-winner {
+      background: rgba(255, 215, 0, 0.04);
+    }
+
+    .mini-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
     }
 
     /* Game Over Modal */
@@ -262,9 +325,47 @@
       <div class="game-modal" id="gameModal">
         <h2 class="modal-title" id="modalTitle">SOCCER SHOWDOWN</h2>
         <p class="modal-subtitle" id="modalSubtitle">Defeat the AI to win the Cup!</p>
+        <div id="submitSection" style="display: none; margin-bottom: 1.5rem; text-align: center; background: rgba(15, 26, 48, 0.65); padding: 1rem 2rem; border-radius: 12px; border: 1px solid var(--border-color); backdrop-filter: blur(8px); max-width: 400px; width: 100%;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.95rem;">
+            <span>Final Scoreline:</span>
+            <span id="finalScoreText" style="font-weight: 700; color: var(--accent-green);">0 - 0</span>
+          </div>
+          <div id="submitStatusMsg" style="font-size: 0.85rem; font-weight: 700; color: #ffd700;">Saving match results...</div>
+        </div>
         <button class="btn btn-primary btn-lg" id="startBtn">START MATCH</button>
       </div>
 
+    </div>
+
+    <!-- Leaderboard Sidebar Column -->
+    <div class="glass-card leaderboard-sidebar" style="padding: 1.25rem;">
+      <h3 class="leaderboard-title">
+        <span>🏆</span> Top Competitors
+      </h3>
+      <div class="table-responsive">
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">#</th>
+              <th>Player</th>
+              <th style="text-align: right; width: 35%;">GD (Score)</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <tr>
+              <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading scores...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-color); padding-top: 0.75rem; text-align: left;">
+        <h4 style="color: var(--text-main); font-weight: 700; margin-bottom: 4px;">🎯 Ranking Rules:</h4>
+        <ul style="padding-left: 1rem;">
+          <li>Players are ranked by <strong>Goal Difference</strong> against AI (Player Goals - AI Goals).</li>
+          <li>Tiebreaker: higher <strong>Goals Scored</strong>.</li>
+        </ul>
+      </div>
     </div>
 
     <!-- Mobile Touch Controls -->
@@ -299,6 +400,96 @@
   </div>
 
   <script>
+    // --- SESSION AUTHENTICATION ---
+    const currentUser = JSON.parse(localStorage.getItem('fifa_user') || 'null');
+    if (!currentUser || !currentUser.token) {
+      window.location.href = 'login.html';
+    }
+
+    // --- LEADERBOARD & SUBMISSIONS ---
+    async function loadLeaderboard() {
+      try {
+        const response = await fetch('/api/soccer/top');
+        const data = await response.json();
+        const body = document.getElementById('leaderboardBody');
+        
+        if (data.success && data.topScores) {
+          body.innerHTML = '';
+          if (data.topScores.length === 0) {
+            body.innerHTML = '<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No match records yet! Play to rank!</td></tr>';
+            return;
+          }
+
+          data.topScores.forEach((entry, index) => {
+            const row = document.createElement('tr');
+            const isSelf = entry.username === currentUser.username;
+            const isWinner = index === 0;
+
+            if (isSelf) row.classList.add('active-user');
+            if (isWinner) row.classList.add('gold-winner');
+
+            const gd = entry.playerScore - entry.aiScore;
+            const gdSign = gd > 0 ? `+${gd}` : gd;
+
+            row.innerHTML = `
+              <td style="font-weight: 700; color: ${isWinner ? '#ffd700' : 'var(--text-muted)'};">
+                ${isWinner ? '👑 1' : index + 1}
+              </td>
+              <td style="font-weight: 600; color: ${isWinner ? '#ffd700' : 'var(--text-main)'};">
+                ${entry.username} ${isSelf ? '<small style="color:var(--accent-green);">(You)</small>' : ''}
+              </td>
+              <td style="text-align: right; font-weight: 700; color: ${gd > 0 ? 'var(--accent-green)' : gd < 0 ? '#ef5350' : 'var(--text-muted)'};">
+                ${gdSign} <small style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(${entry.playerScore}-${entry.aiScore})</small>
+              </td>
+            `;
+            body.appendChild(row);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load leaderboard:', err);
+      }
+    }
+    loadLeaderboard();
+
+    async function submitMatchScore() {
+      const statusMsg = document.getElementById('submitStatusMsg');
+      statusMsg.textContent = 'Saving match results to DB...';
+      statusMsg.style.color = '#ffd700';
+
+      try {
+        const response = await fetch('/api/soccer/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.token}`
+          },
+          body: JSON.stringify({
+            username: currentUser.username,
+            token: currentUser.token,
+            playerScore: p1Score,
+            aiScore: p2Score
+          })
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          statusMsg.textContent = result.isNewHighScore ? '🎉 NEW PERSONAL RECORD DETECTED! 🎉' : 'Match result saved successfully!';
+          statusMsg.style.color = result.isNewHighScore ? '#ffd700' : '#00ff87';
+          if (result.isNewHighScore) {
+            playSound('win');
+          }
+          await loadLeaderboard();
+        } else {
+          statusMsg.textContent = 'Save failed: ' + (result.message || 'Error');
+          statusMsg.style.color = '#ef5350';
+        }
+      } catch (err) {
+        console.error(err);
+        statusMsg.textContent = 'Save failed: Network error';
+        statusMsg.style.color = '#ef5350';
+      }
+    }
+
     // --- WEB AUDIO API AUDIO SYNTHESIS ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let soundEnabled = true;
@@ -851,6 +1042,9 @@
       modal.classList.add('show');
       startBtn.textContent = 'PLAY AGAIN';
 
+      document.getElementById('finalScoreText').textContent = `${p1Score} - ${p2Score}`;
+      document.getElementById('submitSection').style.display = 'block';
+
       if (p1Score > p2Score) {
         modalTitle.textContent = '🏆 YOU WIN! 🏆';
         modalTitle.style.color = 'var(--accent-green)';
@@ -867,6 +1061,8 @@
         modalSubtitle.textContent = `Scoreline: ${p1Score} - ${p2Score}. Double Overtime next?`;
         playSound('lose');
       }
+
+      submitMatchScore();
     }
 
     startBtn.addEventListener('click', () => {
@@ -882,6 +1078,8 @@
       document.getElementById('p1Score').textContent = '0';
       document.getElementById('p2Score').textContent = '0';
       timerEl.textContent = '60';
+
+      document.getElementById('submitSection').style.display = 'none';
 
       resetPositions('p1');
       gameActive = true;

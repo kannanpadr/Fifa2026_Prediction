@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juggling Pro - FIFA World Cup 2026 Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: radial-gradient(circle at center, #0f1a30 0%, #070d19 100%);
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+
+    .game-layout {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      text-align: center;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .game-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .game-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .canvas-container {
+      position: relative;
+      background: rgba(15, 26, 48, 0.4);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background-color: #050b14;
+      cursor: crosshair;
+    }
+
+    .scoreboard-overlay {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(15, 26, 48, 0.85);
+      border-bottom: 2px solid var(--border-color);
+      font-family: var(--font-display);
+    }
+
+    .score-box {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent-green);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .hud-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .lives-container {
+      display: flex;
+      gap: 6px;
+      font-size: 1.25rem;
+      color: #ef5350;
+    }
+
+    .life-heart {
+      transition: transform 0.3s ease, filter 0.3s ease;
+    }
+
+    .life-heart.lost {
+      filter: grayscale(1) brightness(0.4);
+      transform: scale(0.85);
+    }
+
+    .wind-hud {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: #ffd700;
+    }
+
+    .leaderboard-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .leaderboard-title {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: var(--accent-green);
+      margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .mini-table th {
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .mini-table td {
+      padding: 0.6rem 0.5rem;
+      font-size: 0.8rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .mini-table tr.active-user {
+      background: rgba(0, 230, 118, 0.06);
+    }
+
+    .mini-table tr.gold-winner {
+      background: rgba(255, 215, 0, 0.04);
+    }
+
+    .mini-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: var(--transition-smooth);
+    }
+
+    .back-btn:hover {
+      color: var(--accent-green);
+    }
+
+    .btn-sound {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: var(--transition-smooth);
+    }
+
+    .btn-sound:hover {
+      background: rgba(0, 230, 118, 0.1);
+      border-color: var(--accent-green);
+    }
+
+    /* Game Modal */
+    .game-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(7, 13, 25, 0.92);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: 2rem;
+    }
+
+    .game-modal.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 2.75rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-main);
+    }
+
+    .modal-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      max-width: 450px;
+    }
+
+    .win-submit-section {
+      margin-bottom: 1.75rem;
+      text-align: center;
+      background: rgba(15, 26, 48, 0.65);
+      padding: 1.25rem 2.25rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(8px);
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .win-submit-stat {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .win-submit-stat span:first-child {
+      color: var(--text-muted);
+    }
+
+    .win-submit-stat span:last-child {
+      font-weight: 700;
+      color: var(--accent-green);
+    }
+
+    /* Keyframe Shake for drop penalty */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+
+    .shake {
+      animation: shake 0.4s ease-in-out;
+    }
+  </style>
+</head>
+<body class="animate-fade-in">
+
+  <div class="game-layout">
+
+    <div class="game-header">
+      <a href="games.html" class="back-btn">
+        <span>←</span> Back to Games
+      </a>
+      <h2 style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+        ⚽ Juggling Pro
+      </h2>
+      <button id="soundToggle" class="btn-sound">
+        <span>🔊</span> Sound ON
+      </button>
+    </div>
+
+    <!-- Canvas Column -->
+    <div class="canvas-container" id="canvasWrapper">
+
+      <!-- Scoreboard HUD -->
+      <div class="scoreboard-overlay">
+        <div class="hud-stat">
+          <span class="stat-label">Score</span>
+          <span class="score-box" id="scoreVal">0</span>
+        </div>
+        <div class="hud-stat">
+          <span class="stat-label">Multiplier</span>
+          <span class="score-box" id="comboVal" style="color: #00ff87;">x1</span>
+        </div>
+        <div class="hud-stat">
+          <span class="stat-label">Time</span>
+          <span class="score-box" id="timerVal" style="color: #ffd700;">0.0s</span>
+        </div>
+        <div class="hud-stat">
+          <span class="stat-label">Wind</span>
+          <span class="wind-hud" id="windVal">Calm</span>
+        </div>
+        <div class="hud-stat">
+          <span class="stat-label">Lives</span>
+          <div class="lives-container" id="livesContainer">
+            <span class="life-heart">❤️</span>
+            <span class="life-heart">❤️</span>
+            <span class="life-heart">❤️</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+      <!-- Game Modal (Start/Over) -->
+      <div class="game-modal show" id="gameModal">
+        <h2 class="modal-title" id="modalTitle">JUGGLING PRO</h2>
+        <p class="modal-subtitle" id="modalSubtitle">Click or tap the football to keep it in the air. Tap offset controls direction. Watch the shifting wind and collect golden stars!</p>
+        
+        <div class="win-submit-section" id="submitSection" style="display: none;">
+          <div class="win-submit-stat">
+            <span>Final Score:</span>
+            <span id="finalScoreText">0</span>
+          </div>
+          <div class="win-submit-stat">
+            <span>Max Combo:</span>
+            <span id="finalComboText">1</span>
+          </div>
+          <div class="win-submit-stat">
+            <span>Time Survived:</span>
+            <span id="finalTimeText">0.0s</span>
+          </div>
+          <div id="submitStatusMsg" style="font-size: 0.85rem; font-weight: 700; color: #ffd700; margin-top: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">Saving score...</div>
+        </div>
+
+        <button class="btn btn-primary btn-lg" id="startBtn">START GAME</button>
+      </div>
+
+    </div>
+
+    <!-- Leaderboard Sidebar Column -->
+    <div class="glass-card leaderboard-sidebar" style="padding: 1.25rem;">
+      <h3 class="leaderboard-title">
+        <span>🏆</span> Top Jugglers
+      </h3>
+      <div class="table-responsive">
+        <table class="mini-table">
+          <thead>
+            <tr>
+              <th style="width: 15%;">#</th>
+              <th>Player</th>
+              <th style="text-align: right; width: 25%;">Score</th>
+              <th style="text-align: right; width: 25%;">Time</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <tr>
+              <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading scores...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-color); padding-top: 0.75rem; text-align: left;">
+        <h4 style="color: var(--text-main); font-weight: 700; margin-bottom: 4px;">🎯 Pro Tips:</h4>
+        <ul style="padding-left: 1rem;">
+          <li>Click the <strong>left</strong> of the ball to bounce it <strong>right</strong>.</li>
+          <li>Consecutive kicks in the sweet spot build multipliers!</li>
+          <li>Collect **Golden Stars** for instant +10 points!</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- SESSION AUTHENTICATION ---
+    const currentUser = JSON.parse(localStorage.getItem('fifa_user') || 'null');
+    if (!currentUser || !currentUser.token) {
+      window.location.href = 'login.html';
+    }
+
+    // --- AUDIO SYNTHESIS ENGINE ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let soundEnabled = true;
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      
+      // Resume context if suspended
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'kick') {
+        // High quality kick sound
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (type === 'bounce') {
+        // Soft wall hit sound
+        osc.frequency.setValueAtTime(80, now);
+        osc.frequency.linearRampToValueAtTime(40, now + 0.15);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'collect') {
+        // Star sparkle sound
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.setValueAtTime(800, now + 0.08);
+        osc.frequency.setValueAtTime(1100, now + 0.16);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'whistle') {
+        // Referee whistle
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.linearRampToValueAtTime(1050, now + 0.12);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+        
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.frequency.setValueAtTime(900, now + 0.1);
+        osc2.frequency.linearRampToValueAtTime(1050, now + 0.22);
+        gain2.gain.setValueAtTime(0.15, now + 0.1);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        
+        osc.start(now);
+        osc.stop(now + 0.22);
+        osc2.start(now + 0.1);
+        osc2.stop(now + 0.3);
+      } else if (type === 'drop') {
+        // Sad fall sound
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(80, now + 0.6);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      } else if (type === 'highScore') {
+        // Fanfare trumpets
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, index) => {
+          const oscF = audioCtx.createOscillator();
+          const gainF = audioCtx.createGain();
+          oscF.connect(gainF);
+          gainF.connect(audioCtx.destination);
+          oscF.frequency.setValueAtTime(freq, now + index * 0.1);
+          gainF.gain.setValueAtTime(0.15, now + index * 0.1);
+          gainF.gain.exponentialRampToValueAtTime(0.01, now + index * 0.1 + 0.3);
+          oscF.start(now + index * 0.1);
+          oscF.stop(now + index * 0.1 + 0.3);
+        });
+      } else if (type === 'gameover') {
+        // Sad chords
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(110, now + 0.8);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        osc.start(now);
+        osc.stop(now + 0.8);
+      }
+    }
+
+    document.getElementById('soundToggle').addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundToggle').innerHTML = soundEnabled ? '<span>🔊</span> Sound ON' : '<span>🔇</span> Sound OFF';
+    });
+
+    // --- GAME ENGINE SETUP ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+
+    let gameActive = false;
+    let score = 0;
+    let combo = 0;
+    let maxCombo = 0;
+    let lives = 3;
+    let timeSurvived = 0;
+    let startTime = 0;
+    let timerInterval = null;
+
+    // Ball attributes
+    const ball = {
+      x: 400,
+      y: 150,
+      vx: 0,
+      vy: 0,
+      radius: 24,
+      rotation: 0,
+      angularVelocity: 0,
+      gravity: 0.34,
+      bounceFactor: 0.75,
+      isDead: false
+    };
+
+    // Wind states
+    const wind = {
+      targetX: 0,
+      currentX: 0,
+      updateTimer: 0,
+      particles: []
+    };
+
+    // Star attributes
+    const star = {
+      x: 0,
+      y: 0,
+      active: false,
+      radius: 16,
+      pulse: 0,
+      timer: 0
+    };
+
+    // Game arrays
+    let particles = [];
+    let scorePopups = [];
+
+    // --- LEADERBOARD & SUBMISSIONS ---
+    async function loadLeaderboard() {
+      try {
+        const response = await fetch('/api/juggling/top');
+        const data = await response.json();
+        const body = document.getElementById('leaderboardBody');
+        
+        if (data.success && data.topScores) {
+          body.innerHTML = '';
+          if (data.topScores.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No high scores yet! Be the first!</td></tr>';
+            return;
+          }
+
+          data.topScores.forEach((entry, index) => {
+            const row = document.createElement('tr');
+            const isSelf = entry.username === currentUser.username;
+            const isWinner = index === 0;
+
+            if (isSelf) row.classList.add('active-user');
+            if (isWinner) row.classList.add('gold-winner');
+
+            row.innerHTML = `
+              <td style="font-weight: 700; color: ${isWinner ? '#ffd700' : 'var(--text-muted)'};">
+                ${isWinner ? '👑 1' : index + 1}
+              </td>
+              <td style="font-weight: 600; color: ${isWinner ? '#ffd700' : 'var(--text-main)'};">
+                ${entry.username} ${isSelf ? '<small style="color:var(--accent-green);">(You)</small>' : ''}
+              </td>
+              <td style="text-align: right; font-weight: 700; color: var(--accent-green);">${entry.score}</td>
+              <td style="text-align: right; color: var(--text-muted);">${entry.timeSurvived.toFixed(1)}s</td>
+            `;
+            body.appendChild(row);
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load leaderboard:', err);
+      }
+    }
+    loadLeaderboard();
+
+    // Trigger score submit endpoint
+    async function submitScore() {
+      const statusMsg = document.getElementById('submitStatusMsg');
+      statusMsg.textContent = 'Saving score to online leaderboard...';
+      statusMsg.style.color = '#ffd700';
+
+      try {
+        const response = await fetch('/api/juggling/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.token}`
+          },
+          body: JSON.stringify({
+            username: currentUser.username,
+            token: currentUser.token,
+            score: score,
+            maxCombo: maxCombo,
+            timeSurvived: parseFloat(timeSurvived.toFixed(2))
+          })
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          statusMsg.textContent = result.isNewHighScore ? '🎉 NEW TOP SCORE RECORDED! 🎉' : 'Score saved successfully!';
+          statusMsg.style.color = result.isNewHighScore ? '#ffd700' : '#00ff87';
+          if (result.isNewHighScore) {
+            playSound('highScore');
+          }
+          await loadLeaderboard();
+        } else {
+          statusMsg.textContent = 'Save failed: ' + (result.message || 'Error');
+          statusMsg.style.color = '#ef5350';
+        }
+      } catch (err) {
+        console.error(err);
+        statusMsg.textContent = 'Save failed: Network error';
+        statusMsg.style.color = '#ef5350';
+      }
+    }
+
+    // --- GAME PHYSICS & LOOP FUNCTIONS ---
+    function spawnParticles(x, y, count, colorHex) {
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          vx: (Math.random() - 0.5) * 6,
+          vy: (Math.random() - 0.5) * 6 - 2,
+          radius: Math.random() * 3 + 2,
+          color: colorHex || `hsl(${Math.random() * 360}, 100%, 65%)`,
+          alpha: 1,
+          decay: Math.random() * 0.02 + 0.015
+        });
+      }
+    }
+
+    function addScorePopup(x, y, text, color) {
+      scorePopups.push({
+        x: x,
+        y: y,
+        text: text,
+        color: color || '#00ff87',
+        alpha: 1,
+        vy: -1.2
+      });
+    }
+
+    function spawnStar() {
+      star.x = 80 + Math.random() * (canvas.width - 160);
+      star.y = 80 + Math.random() * 180;
+      star.active = true;
+      star.timer = 360; // Despawns after 6 seconds
+      star.pulse = 0;
+    }
+
+    function updateWind() {
+      wind.updateTimer--;
+      if (wind.updateTimer <= 0) {
+        // Change wind: 30% chance calm, otherwise force between -0.12 and +0.12
+        if (Math.random() < 0.3) {
+          wind.targetX = 0;
+        } else {
+          wind.targetX = (Math.random() - 0.5) * 0.24;
+        }
+        wind.updateTimer = 300; // Change every 5 seconds
+      }
+
+      // Smooth transition
+      wind.currentX += (wind.targetX - wind.currentX) * 0.05;
+
+      // Update wind text HUD
+      const valText = document.getElementById('windVal');
+      if (Math.abs(wind.currentX) < 0.02) {
+        valText.textContent = 'Calm';
+        valText.style.color = 'var(--text-muted)';
+      } else {
+        const speedKmh = Math.abs(wind.currentX * 120).toFixed(1);
+        const dir = wind.currentX > 0 ? '➡️' : '⬅️';
+        valText.textContent = `${dir} ${speedKmh} m/s`;
+        valText.style.color = '#ffd700';
+      }
+
+      // Spawn wind visual particles occasionally
+      if (Math.abs(wind.currentX) > 0.02 && Math.random() < 0.08) {
+        wind.particles.push({
+          x: wind.currentX > 0 ? -20 : canvas.width + 20,
+          y: Math.random() * (canvas.height - 50),
+          vx: wind.currentX * 80 + (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 0.5,
+          length: Math.random() * 30 + 15,
+          alpha: Math.random() * 0.15 + 0.05
+        });
+      }
+
+      // Update wind particles
+      for (let i = wind.particles.length - 1; i >= 0; i--) {
+        const wp = wind.particles[i];
+        wp.x += wp.vx;
+        wp.y += wp.vy;
+        if (wp.x < -100 || wp.x > canvas.width + 100) {
+          wind.particles.splice(i, 1);
+        }
+      }
+    }
+
+    function checkClick(clientX, clientY) {
+      if (!gameActive || ball.isDead) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const clickX = ((clientX - rect.left) / rect.width) * canvas.width;
+      const clickY = ((clientY - rect.top) / rect.height) * canvas.height;
+
+      // 1. Check if user clicked a collectible star directly
+      if (star.active) {
+        const starDist = Math.hypot(clickX - star.x, clickY - star.y);
+        if (starDist < star.radius + 15) {
+          star.active = false;
+          score += 10;
+          document.getElementById('scoreVal').textContent = score;
+          spawnParticles(star.x, star.y, 25, '#ffd700');
+          playSound('collect');
+          addScorePopup(star.x, star.y, '+10 STAR!', '#ffd700');
+          return;
+        }
+      }
+
+      // 2. Check if click is near the football
+      const dist = Math.hypot(clickX - ball.x, clickY - ball.y);
+      const hitRadius = ball.radius + 35; // Generous hit area for premium feel
+
+      if (dist < hitRadius) {
+        // Kick calculations
+        const dx = ball.x - clickX;
+        const dy = ball.y - clickY;
+
+        // Upward velocity: higher velocity the lower the click is
+        const forceY = -8.5 - Math.max(0, dy * 0.08);
+        ball.vy = Math.max(-12, Math.min(-6.5, forceY));
+
+        // Horizontal velocity: deflect away from click position
+        ball.vx = dx * 0.17;
+        // Limit horizontal velocity to avoid extreme speeds
+        ball.vx = Math.max(-7, Math.min(7, ball.vx));
+
+        // Spin based on horizontal offset
+        ball.angularVelocity = -dx * 0.015;
+
+        // Combo calculations
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        document.getElementById('comboVal').textContent = `x${combo}`;
+        if (combo > 1) {
+          document.getElementById('comboVal').style.transform = 'scale(1.2)';
+          setTimeout(() => document.getElementById('comboVal').style.transform = 'scale(1)', 150);
+        }
+
+        // Add to score
+        score += 1 * combo;
+        document.getElementById('scoreVal').textContent = score;
+
+        // Spawn kick particles
+        spawnParticles(clickX, clickY, 15, '#00ff87');
+        playSound('kick');
+
+        // Show floating combo/point popup
+        addScorePopup(ball.x, ball.y, `+${1 * combo}`, '#00e676');
+        if (combo >= 5 && combo % 5 === 0) {
+          addScorePopup(ball.x, ball.y - 20, `Combo x${combo}!`, '#ffd700');
+        }
+      }
+    }
+
+    // Canvas click event
+    canvas.addEventListener('mousedown', e => {
+      checkClick(e.clientX, e.clientY);
+    });
+
+    // Touch events for mobile compatibility
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (e.touches.length > 0) {
+        checkClick(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    });
+
+    function loseLife() {
+      lives--;
+      ball.isDead = true;
+      combo = 0;
+      document.getElementById('comboVal').textContent = 'x1';
+      playSound('drop');
+      
+      // Crack a life heart on UI
+      const hearts = document.querySelectorAll('.life-heart');
+      if (hearts[lives]) {
+        hearts[lives].classList.add('lost');
+      }
+
+      // Screen shake visual
+      canvasWrapper.classList.add('shake');
+      setTimeout(() => canvasWrapper.classList.remove('shake'), 400);
+
+      // Check for Game Over
+      if (lives <= 0) {
+        setTimeout(endGame, 1000);
+      } else {
+        // Respawn ball
+        setTimeout(() => {
+          ball.x = 400;
+          ball.y = 120;
+          ball.vx = 0;
+          ball.vy = 0;
+          ball.rotation = 0;
+          ball.angularVelocity = 0;
+          ball.isDead = false;
+          playSound('whistle');
+        }, 1500);
+      }
+    }
+
+    function startGame() {
+      // Reset variables
+      score = 0;
+      combo = 0;
+      maxCombo = 0;
+      lives = 3;
+      timeSurvived = 0;
+      startTime = Date.now();
+      gameActive = true;
+      ball.isDead = false;
+      ball.x = 400;
+      ball.y = 100;
+      ball.vx = 0;
+      ball.vy = 0;
+      ball.rotation = 0;
+      ball.angularVelocity = 0;
+      
+      particles = [];
+      scorePopups = [];
+      wind.particles = [];
+      wind.targetX = 0;
+      wind.currentX = 0;
+      wind.updateTimer = 150;
+      star.active = false;
+
+      // Update UI elements
+      document.getElementById('scoreVal').textContent = '0';
+      document.getElementById('comboVal').textContent = 'x1';
+      document.getElementById('timerVal').textContent = '0.0s';
+      document.getElementById('windVal').textContent = 'Calm';
+      
+      const hearts = document.querySelectorAll('.life-heart');
+      hearts.forEach(h => h.classList.remove('lost'));
+
+      document.getElementById('gameModal').classList.remove('show');
+
+      // Start timer
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!ball.isDead) {
+          timeSurvived = (Date.now() - startTime) / 1000;
+          document.getElementById('timerVal').textContent = timeSurvived.toFixed(1) + 's';
+        }
+      }, 100);
+
+      // Trigger start sound
+      playSound('whistle');
+    }
+
+    function endGame() {
+      gameActive = false;
+      if (timerInterval) clearInterval(timerInterval);
+      playSound('gameover');
+
+      // Setup Modal text
+      document.getElementById('modalTitle').textContent = 'GAME OVER';
+      document.getElementById('modalTitle').style.color = '#ef5350';
+      document.getElementById('modalSubtitle').textContent = score >= 50 
+        ? 'Amazing juggling skills! You are an elite competitor!' 
+        : 'Good effort! Keep practicing to secure your place on the leaderboard.';
+      
+      document.getElementById('finalScoreText').textContent = score;
+      document.getElementById('finalComboText').textContent = combo > maxCombo ? combo : maxCombo;
+      document.getElementById('finalTimeText').textContent = timeSurvived.toFixed(2) + 's';
+
+      document.getElementById('submitSection').style.display = 'block';
+      document.getElementById('startBtn').textContent = 'PLAY AGAIN';
+      document.getElementById('gameModal').classList.add('show');
+
+      // Submit score
+      submitScore();
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function drawFootball(x, y, radius, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+
+      // Shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 15;
+      ctx.shadowOffsetY = 6;
+
+      // Draw Main White Ball Outer
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      const ballGrad = ctx.createRadialGradient(-radius*0.3, -radius*0.3, radius*0.1, 0, 0, radius);
+      ballGrad.addColorStop(0, '#ffffff');
+      ballGrad.addColorStop(0.75, '#e2e8f0');
+      ballGrad.addColorStop(1, '#94a3b8');
+      ctx.fillStyle = ballGrad;
+      ctx.fill();
+      
+      // Clean shadows for inner drawings
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Draw Football Panels (Pentagon outlines & shapes)
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.35)';
+      ctx.lineWidth = 1.5;
+
+      // Center Pentagon
+      const innerSize = radius * 0.35;
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const px = Math.cos((Math.PI * 2 / 5) * i - Math.PI / 2) * innerSize;
+        const py = Math.sin((Math.PI * 2 / 5) * i - Math.PI / 2) * innerSize;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Outer seam connections
+      for (let i = 0; i < 5; i++) {
+        const outerAngle = (Math.PI * 2 / 5) * i - Math.PI / 2;
+        const innerX = Math.cos(outerAngle) * innerSize;
+        const innerY = Math.sin(outerAngle) * innerSize;
+        const outerX = Math.cos(outerAngle) * radius;
+        const outerY = Math.sin(outerAngle) * radius;
+
+        // Seam line
+        ctx.beginPath();
+        ctx.moveTo(innerX, innerY);
+        ctx.lineTo(outerX, outerY);
+        ctx.stroke();
+
+        // Draw side pentagons cutouts
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        const baseAngleOffset = Math.PI / 5;
+        const cx = Math.cos(outerAngle + baseAngleOffset) * (radius * 0.75);
+        const cy = Math.sin(outerAngle + baseAngleOffset) * (radius * 0.75);
+        ctx.arc(cx, cy, radius * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawStar(x, y, radius, pulse) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+      ctx.shadowBlur = 15 + Math.sin(pulse) * 8;
+
+      ctx.fillStyle = '#ffd700';
+      ctx.strokeStyle = '#ffa000';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      const spikes = 5;
+      const outerR = radius + Math.sin(pulse) * 2;
+      const innerR = radius * 0.45 + Math.sin(pulse) * 1;
+      let rot = Math.PI / 2 * 3;
+      let cx = x;
+      let cy = y;
+      let step = Math.PI / spikes;
+
+      ctx.moveTo(cx, cy - outerR);
+      for (let i = 0; i < spikes; i++) {
+        cx = x + Math.cos(rot) * outerR;
+        cy = y + Math.sin(rot) * outerR;
+        ctx.lineTo(cx, cy);
+        rot += step;
+
+        cx = x + Math.cos(rot) * innerR;
+        cy = y + Math.sin(rot) * innerR;
+        ctx.lineTo(cx, cy);
+        rot += step;
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function updateAndRender() {
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Draw Field Elements (Pitch background lights)
+      // Light spotlight beams
+      const spotGrad1 = ctx.createLinearGradient(150, 0, 200, 380);
+      spotGrad1.addColorStop(0, 'rgba(0, 230, 118, 0.06)');
+      spotGrad1.addColorStop(1, 'rgba(0, 230, 118, 0)');
+      ctx.fillStyle = spotGrad1;
+      ctx.beginPath();
+      ctx.moveTo(150, 0);
+      ctx.lineTo(250, 0);
+      ctx.lineTo(400, 500);
+      ctx.lineTo(100, 500);
+      ctx.closePath();
+      ctx.fill();
+
+      const spotGrad2 = ctx.createLinearGradient(650, 0, 600, 380);
+      spotGrad2.addColorStop(0, 'rgba(0, 230, 118, 0.06)');
+      spotGrad2.addColorStop(1, 'rgba(0, 230, 118, 0)');
+      ctx.fillStyle = spotGrad2;
+      ctx.beginPath();
+      ctx.moveTo(650, 0);
+      ctx.lineTo(550, 0);
+      ctx.lineTo(400, 500);
+      ctx.lineTo(700, 500);
+      ctx.closePath();
+      ctx.fill();
+
+      // Pitch Grass line
+      ctx.fillStyle = '#0f241a';
+      ctx.fillRect(0, canvas.height - 45, canvas.width, 45);
+
+      // Pitch white chalk line
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height - 43);
+      ctx.lineTo(canvas.width, canvas.height - 43);
+      ctx.stroke();
+
+      // Stadium lights visuals
+      ctx.fillStyle = 'rgba(15, 26, 48, 0.9)';
+      ctx.fillRect(50, 10, 120, 20);
+      ctx.fillRect(630, 10, 120, 20);
+      
+      // Draw glowing light bulbs
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#00ff87';
+      ctx.shadowBlur = 10;
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(70 + i * 28, 20, 6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(650 + i * 28, 20, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // 2. Update and draw wind effects
+      if (gameActive) {
+        updateWind();
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1.5;
+        wind.particles.forEach(wp => {
+          ctx.beginPath();
+          ctx.moveTo(wp.x, wp.y);
+          ctx.lineTo(wp.x + wp.length, wp.y);
+          ctx.stroke();
+        });
+      }
+
+      // 3. Update physics if game is active
+      if (gameActive && !ball.isDead) {
+        // Apply gravity
+        ball.vy += ball.gravity;
+
+        // Apply wind deflection
+        ball.vx += wind.currentX * 0.15;
+
+        // Move ball
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Apply spin friction
+        ball.rotation += ball.angularVelocity;
+        ball.angularVelocity *= 0.985;
+
+        // Wall collisions
+        if (ball.x - ball.radius < 0) {
+          ball.x = ball.radius;
+          ball.vx = -ball.vx * ball.bounceFactor;
+          ball.angularVelocity = -ball.vy * 0.015; // wall collision adds spin
+          playSound('bounce');
+        } else if (ball.x + ball.radius > canvas.width) {
+          ball.x = canvas.width - ball.radius;
+          ball.vx = -ball.vx * ball.bounceFactor;
+          ball.angularVelocity = ball.vy * 0.015;
+          playSound('bounce');
+        }
+
+        // Roof collision (ceiling constraint)
+        if (ball.y - ball.radius < 0) {
+          ball.y = ball.radius;
+          ball.vy = -ball.vy * 0.5;
+        }
+
+        // Ground / drop collision (lost life)
+        if (ball.y + ball.radius >= canvas.height - 45) {
+          loseLife();
+        }
+
+        // 4. Update and Check Star Collection
+        if (star.active) {
+          star.pulse += 0.06;
+          star.timer--;
+          
+          // Hover collision check (ball meets star)
+          const dist = Math.hypot(ball.x - star.x, ball.y - star.y);
+          if (dist < ball.radius + star.radius) {
+            star.active = false;
+            score += 10;
+            document.getElementById('scoreVal').textContent = score;
+            spawnParticles(star.x, star.y, 25, '#ffd700');
+            playSound('collect');
+            addScorePopup(star.x, star.y, '+10 STAR!', '#ffd700');
+          }
+
+          if (star.timer <= 0) {
+            star.active = false;
+          }
+        } else {
+          // Trigger random star spawn (average every 12 seconds)
+          if (Math.random() < 0.0015) {
+            spawnStar();
+          }
+        }
+      }
+
+      // 5. Draw Star
+      if (star.active) {
+        drawStar(star.x, star.y, star.radius, star.pulse);
+      }
+
+      // 6. Draw particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.06; // slight gravity on sparks
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // 7. Draw Ball
+      if (!ball.isDead) {
+        drawFootball(ball.x, ball.y, ball.radius, ball.rotation);
+      } else if (lives > 0) {
+        // Draw splash at bottom when dropped
+        ctx.fillStyle = '#ef5350';
+        ctx.font = '700 1rem var(--font-display)';
+        ctx.textAlign = 'center';
+        ctx.fillText('BALL DROPPED!', 400, 260);
+      }
+
+      // 8. Draw floating score popups
+      for (let i = scorePopups.length - 1; i >= 0; i--) {
+        const sp = scorePopups[i];
+        sp.y += sp.vy;
+        sp.alpha -= 0.018;
+
+        if (sp.alpha <= 0) {
+          scorePopups.splice(i, 1);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = sp.alpha;
+          ctx.fillStyle = sp.color;
+          ctx.font = '800 1.15rem var(--font-display)';
+          ctx.textAlign = 'center';
+          ctx.fillText(sp.text, sp.x, sp.y);
+          ctx.restore();
+        }
+      }
+
+      // Keep animation loop going
+      requestAnimationFrame(updateAndRender);
+    }
+
+    // Begin looping
+    updateAndRender();
+
+    // Start Button binder
+    document.getElementById('startBtn').addEventListener('click', () => {
+      startGame();
+    });
+
+    // Handle authentication dropdown layout dynamically (shared with dashboard pages)
+    const profileTrigger = document.createElement('div'); // Mock for auth menu
+  </script>
+</body>
+</html>

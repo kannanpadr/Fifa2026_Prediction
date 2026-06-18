@@ -171,6 +171,8 @@ const User = require('./models/User');
 const VisitorCounter = require('./models/VisitorCounter');
 const QuizSubmission = require('./models/QuizSubmission');
 const PenaltyScore = require('./models/PenaltyScore');
+const JugglingScore = require('./models/JugglingScore');
+const SoccerScore = require('./models/SoccerScore');
 const questionsPool = require('./data/questionsPool');
 
 // Data will be fetched from MongoDB via Mongoose models.
@@ -759,6 +761,184 @@ app.post('/api/penalty/submit', async (req, res) => {
   }
 });
 
+// --- JUGGLING PRO ENDPOINTS ---
+
+// Get current global top score and top 10 leaderboard entries
+app.get('/api/juggling/top', async (req, res) => {
+  try {
+    const topScores = await JugglingScore.find()
+      .sort({ score: -1, timeSurvived: 1, maxCombo: -1 })
+      .limit(10)
+      .exec();
+    res.json({ success: true, topScore: topScores[0] || null, topScores });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to fetch top juggling scores" });
+  }
+});
+
+// Submit a new juggling score
+app.post('/api/juggling/submit', async (req, res) => {
+  const { username, score, maxCombo, timeSurvived } = req.body;
+  if (!username || score === undefined || maxCombo === undefined || timeSurvived === undefined) {
+    return res.status(400).json({ success: false, message: "Invalid parameters: username, score, maxCombo, timeSurvived are required" });
+  }
+
+  // Session token authorization check
+  const authHeader = req.headers.authorization;
+  let token = req.body.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing session token" });
+  }
+
+  try {
+    const sessionUser = await User.findOne({ username: username.trim(), sessionToken: token });
+    if (!sessionUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
+    }
+
+    const finalScore = parseInt(score);
+    const finalCombo = parseInt(maxCombo);
+    const secondsSurvived = parseFloat(timeSurvived);
+
+    if (isNaN(finalScore) || isNaN(finalCombo) || isNaN(secondsSurvived) || finalScore < 0) {
+      return res.status(400).json({ success: false, message: "Invalid score, combo, or time." });
+    }
+
+    // Determine if this beats the current global top score
+    const previousTop = await JugglingScore.findOne().sort({ score: -1, timeSurvived: 1, maxCombo: -1 }).exec();
+    let isNewHighScore = false;
+
+    if (!previousTop) {
+      isNewHighScore = true;
+    } else if (finalScore > previousTop.score) {
+      isNewHighScore = true;
+    } else if (finalScore === previousTop.score && secondsSurvived < previousTop.timeSurvived) {
+      isNewHighScore = true;
+    } else if (finalScore === previousTop.score && secondsSurvived === previousTop.timeSurvived && finalCombo > previousTop.maxCombo) {
+      isNewHighScore = true;
+    }
+
+    const newScore = new JugglingScore({
+      username: username.trim(),
+      score: finalScore,
+      maxCombo: finalCombo,
+      timeSurvived: secondsSurvived
+    });
+
+    await newScore.save();
+    return res.json({ success: true, message: "Score submitted successfully!", isNewHighScore, topScore: newScore });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error saving juggling score" });
+  }
+});
+
+// --- MINI SOCCER SHOWDOWN ENDPOINTS ---
+
+// Get current global top score and top 10 leaderboard entries
+app.get('/api/soccer/top', async (req, res) => {
+  try {
+    const topScores = await SoccerScore.aggregate([
+      {
+        $addFields: {
+          goalDiff: { $subtract: ["$playerScore", "$aiScore"] }
+        }
+      },
+      {
+        $sort: { goalDiff: -1, playerScore: -1, createdAt: 1 }
+      },
+      {
+        $limit: 10
+      }
+    ]);
+
+    res.json({ success: true, topScore: topScores[0] || null, topScores });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to fetch top soccer scores" });
+  }
+});
+
+// Submit a new soccer showdown score
+app.post('/api/soccer/submit', async (req, res) => {
+  const { username, playerScore, aiScore } = req.body;
+  if (!username || playerScore === undefined || aiScore === undefined) {
+    return res.status(400).json({ success: false, message: "Invalid parameters: username, playerScore, aiScore are required" });
+  }
+
+  // Session token authorization check
+  const authHeader = req.headers.authorization;
+  let token = req.body.token;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Unauthorized: Missing session token" });
+  }
+
+  try {
+    const sessionUser = await User.findOne({ username: username.trim(), sessionToken: token });
+    if (!sessionUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
+    }
+
+    const pScore = parseInt(playerScore);
+    const aScore = parseInt(aiScore);
+
+    if (isNaN(pScore) || isNaN(aScore) || pScore < 0 || aScore < 0) {
+      return res.status(400).json({ success: false, message: "Invalid score details." });
+    }
+
+    const topScores = await SoccerScore.aggregate([
+      {
+        $addFields: {
+          goalDiff: { $subtract: ["$playerScore", "$aiScore"] }
+        }
+      },
+      {
+        $sort: { goalDiff: -1, playerScore: -1, createdAt: 1 }
+      },
+      {
+        $limit: 1
+      }
+    ]);
+
+    const previousTop = topScores[0] || null;
+    let isNewHighScore = false;
+
+    const currentDiff = pScore - aScore;
+
+    if (!previousTop) {
+      isNewHighScore = true;
+    } else {
+      const prevDiff = previousTop.playerScore - previousTop.aiScore;
+      if (currentDiff > prevDiff) {
+        isNewHighScore = true;
+      } else if (currentDiff === prevDiff && pScore > previousTop.playerScore) {
+        isNewHighScore = true;
+      }
+    }
+
+    const newScore = new SoccerScore({
+      username: username.trim(),
+      playerScore: pScore,
+      aiScore: aScore
+    });
+
+    await newScore.save();
+    return res.json({ success: true, message: "Score submitted successfully!", isNewHighScore, topScore: newScore });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error saving soccer score" });
+  }
+});
+
 
 const INITIAL_GROUPS = {
   A: [
@@ -1092,13 +1272,16 @@ app.get('/api/admin/db/export', async (req, res) => {
     }
 
     // Fetch all collections in parallel
-    const [users, matches, predictions, quizSubmissions, leaderboardEntries, visitorCounters] = await Promise.all([
+    const [users, matches, predictions, quizSubmissions, leaderboardEntries, visitorCounters, penaltyScores, jugglingScores, soccerScores] = await Promise.all([
       User.find({}, { pinHash: 0, sessionToken: 0 }), // Exclude pinHash and sessionToken for safety/security
       Match.find().sort({ id: 1 }),
       Prediction.find().sort({ submittedAt: -1 }),
       QuizSubmission.find().sort({ createdAt: -1 }),
       LeaderboardEntry.find(),
-      VisitorCounter.find()
+      VisitorCounter.find(),
+      PenaltyScore.find().sort({ createdAt: -1 }),
+      JugglingScore.find().sort({ createdAt: -1 }),
+      SoccerScore.find().sort({ createdAt: -1 })
     ]);
 
     return res.json({
@@ -1110,7 +1293,10 @@ app.get('/api/admin/db/export', async (req, res) => {
         predictions,
         quizSubmissions,
         leaderboardEntries,
-        visitorCounters
+        visitorCounters,
+        penaltyScores,
+        jugglingScores,
+        soccerScores
       }
     });
   } catch (err) {

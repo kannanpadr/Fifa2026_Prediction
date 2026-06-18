@@ -1567,6 +1567,36 @@ async function initGamesPage() {
     `;
     grid.appendChild(quizCard);
 
+    // Juggling Pro Promo Tile
+    const jugglingCard = document.createElement('div');
+    jugglingCard.className = 'glass-card interactive-hover';
+    jugglingCard.style.padding = '1.75rem';
+    jugglingCard.style.cursor = 'pointer';
+    jugglingCard.style.border = '1px dashed var(--accent-green)';
+    jugglingCard.style.display = 'flex';
+    jugglingCard.style.flexDirection = 'column';
+    jugglingCard.style.justifyContent = 'space-between';
+    jugglingCard.addEventListener('click', () => {
+      window.location.href = 'juggling.html';
+    });
+    jugglingCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 Juggling Pro</span>
+        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">⚽</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Juggling Pro</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Keep the ball in the air against shifting wind!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
+        Click to test your juggling skills and compete online.
+      </div>
+    `;
+    grid.appendChild(jugglingCard);
+
     // Show only the 3 game tiles to make a single row (0 matches)
     const firstRowMatches = matchesList.slice(0, 0);
 

@@ -38,7 +38,6 @@
             <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
             <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
             <li><a href="games.html" class="navbar-link active" id="navGames"><span>🎮</span> Games</a></li>
-            <li><a href="leaderboard.html" class="navbar-link" id="navLeaderboard"><span>📊</span> Leaderboard</a></li>
             <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
           </ul>
         </nav>
@@ -50,7 +49,8 @@
             <span class="profile-arrow">▼</span>
           </div>
           <div class="profile-dropdown" id="profileDropdown">
-            <a href="#" class="dropdown-item">👤 Profile Details</a>
+            <a href="leaderboard.html" class="dropdown-item" id="dropdownLeaderboard">📊 Prediction Leaderboard</a>
+            <a href="winner.html" class="dropdown-item" id="dropdownWinner">👑 Games Leaderboard</a>
             <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
             <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊 Player Predictions</a>
             <a href="#" class="dropdown-item" id="adminDownloadDbLink" style="display: none;">📥 Download DB (JSON)</a>
@@ -83,26 +83,7 @@
         </div>
       </div>
 
-      <!-- Weekly Quiz Leaderboard Section -->
-      <div id="quizLeaderboardSection" style="margin-top: 3.5rem; text-align: left; display: none;">
-        <h2 style="font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; text-transform: uppercase; color: #ffd700; margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
-          <span>🏆</span> Weekly Quiz Leaderboard
-        </h2>
-        <div class="glass-card" style="padding: 1.5rem; border-radius: 16px;">
-          <div class="table-responsive">
-            <table class="portal-table" style="width: 100%;">
-              <thead id="leaderboardHeader">
-                <!-- Loaded Dynamically by JS -->
-              </thead>
-              <tbody id="leaderboardBody">
-                <tr>
-                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading leaderboard...</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+
 
     </main>
 
@@ -123,10 +104,6 @@
       <a href="games.html" class="mobile-nav-link active" id="mobNavGames">
         <span class="mobile-nav-icon">🎮</span>
         <span class="mobile-nav-text">Games</span>
-      </a>
-      <a href="leaderboard.html" class="mobile-nav-link">
-        <span class="mobile-nav-icon">📊</span>
-        <span class="mobile-nav-text">Leaderboard</span>
       </a>
       <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
         <span class="mobile-nav-icon">🏆</span>

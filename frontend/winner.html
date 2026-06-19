@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Overall Champions - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Custom Podium Styles */
+    .podium-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 2rem;
+      margin: 3.5rem auto 4rem;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    @media (max-width: 900px) {
+      .podium-container {
+        flex-direction: column;
+        align-items: center;
+        gap: 3rem;
+      }
+    }
+
+    .podium-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2.25rem 1.5rem 2rem;
+      position: relative;
+      transition: var(--transition-smooth);
+      width: 250px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .podium-card:hover {
+      transform: translateY(-8px);
+    }
+
+    .podium-1st {
+      height: 330px;
+      border-color: rgba(255, 215, 0, 0.4);
+      box-shadow: 0 15px 35px rgba(255, 215, 0, 0.08), var(--shadow-lg);
+      order: 2;
+    }
+
+    .podium-1st::before {
+      content: '👑';
+      font-size: 2.5rem;
+      position: absolute;
+      top: -36px;
+      left: 50%;
+      transform: translateX(-50%);
+      filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
+      z-index: 10;
+    }
+
+    .podium-2nd {
+      height: 330px;
+      border-color: rgba(192, 192, 192, 0.3);
+      box-shadow: 0 10px 25px rgba(192, 192, 192, 0.05), var(--shadow-lg);
+      order: 1;
+    }
+
+    .podium-3rd {
+      height: 330px;
+      border-color: rgba(205, 127, 50, 0.3);
+      box-shadow: 0 10px 25px rgba(205, 127, 50, 0.05), var(--shadow-lg);
+      order: 3;
+    }
+
+    @media (max-width: 900px) {
+      .podium-1st { order: 1; height: auto; width: 100%; max-width: 300px; }
+      .podium-2nd { order: 2; height: auto; width: 100%; max-width: 300px; }
+      .podium-3rd { order: 3; height: auto; width: 100%; max-width: 300px; }
+    }
+
+    .podium-avatar {
+      width: 85px;
+      height: 85px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.8rem;
+      color: var(--text-dark);
+      margin-bottom: 1.25rem;
+      border: 3px solid;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      padding: 8px;
+      word-break: break-word;
+      line-height: 1.25;
+    }
+
+    .avatar-1st {
+      background: linear-gradient(135deg, #ffd700 0%, #ffa000 100%);
+      border-color: #ffd700;
+    }
+
+    .avatar-2nd {
+      background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+      border-color: #cbd5e1;
+    }
+
+    .avatar-3rd {
+      background: linear-gradient(135deg, #cd7f32 0%, #a0522d 100%);
+      border-color: #cd7f32;
+    }
+
+    .podium-username {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .podium-points {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.6rem;
+      color: var(--accent-green);
+      margin-bottom: 1.25rem;
+    }
+
+    .podium-breakdown {
+      width: 100%;
+      border-top: 1px solid var(--border-color);
+      padding-top: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    .breakdown-row {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .breakdown-row span:last-child {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .rank-badge {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 800;
+      padding: 0.25rem 0.75rem;
+      border-radius: 30px;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge-1st { background: rgba(255, 215, 0, 0.12); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.3); }
+    .badge-2nd { background: rgba(192, 192, 192, 0.12); color: #cbd5e1; border: 1px solid rgba(192, 192, 192, 0.3); }
+    .badge-3rd { background: rgba(205, 127, 50, 0.12); color: #cd7f32; border: 1px solid rgba(205, 127, 50, 0.3); }
+  </style>
+</head>
+
+<body class="bg-portal animate-fade-in">
+
+  <!-- Background Player Cutout -->
+  <div class="player-bg-right" style="opacity: 0.08;">
+    <img src="assets/ronaldo_cutout.png" alt="Ronaldo Background">
+  </div>
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="games.html" class="navbar-link" id="navGames"><span>🎮</span> Games</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">J</div>
+            <span class="profile-name">John Doe</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="leaderboard.html" class="dropdown-item" id="dropdownLeaderboard">📊 Prediction Leaderboard</a>
+            <a href="winner.html" class="dropdown-item" id="dropdownWinner">👑 Games Leaderboard</a>
+            <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
+            <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊 Player Predictions</a>
+            <a href="#" class="dropdown-item" id="adminDownloadDbLink" style="display: none;">📥 Download DB (JSON)</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2.5rem; text-align: center;">
+        <h1 class="page-title" style="margin-bottom: 0.5rem;">Overall Champions Board</h1><br>
+        <p class="page-subtitle">Combined Portal Standing Across All Game Challenges</p>
+      </div>
+
+      <!-- Podium Pedestal Section -->
+      <div class="podium-container" id="podiumContainer">
+        <!-- Rendered dynamically by JS -->
+        <div style="grid-column: 1 / -1; color: var(--text-muted); padding: 3rem;">Loading Champions Podium...</div>
+      </div>
+
+      <!-- Overall Points List Section -->
+      <div class="glass-card" style="padding: 1.75rem; border-radius: 16px;">
+        <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; text-transform: uppercase; color: var(--accent-green); margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+          <span>📊</span> Detailed Point Standings
+        </h2>
+        <div class="table-responsive">
+          <table class="portal-table" style="width: 100%;">
+            <thead>
+              <tr>
+                <th style="width: 8%;">Rank</th>
+                <th>Competitor</th>
+                <th style="text-align: center; width: 12%;">Quiz Pts</th>
+                <th style="text-align: center; width: 12%;">Penalty Pts</th>
+                <th style="text-align: center; width: 12%;">Juggling Pts</th>
+                <th style="text-align: center; width: 12%;">Soccer Pts</th>
+                <th style="text-align: right; width: 15%;">Total Points</th>
+              </tr>
+            </thead>
+            <tbody id="championsBody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading overall leaderboard rankings...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="games.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🎮</span>
+        <span class="mobile-nav-text">Games</span>
+      </a>
+    </div>
+
+  </div>
+
+  <footer class="page-footer">
+    <p>© 2026 • Designed by Kannan</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

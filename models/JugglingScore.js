@@ -5,6 +5,7 @@ const jugglingScoreSchema = new mongoose.Schema({
   score: { type: Number, required: true },
   maxCombo: { type: Number, default: 1 },
   timeSurvived: { type: Number, required: true }, // duration in seconds
+  difficulty: { type: String, default: 'medium' },
   createdAt: { type: Date, default: Date.now }
 });
 

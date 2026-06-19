@@ -86,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
       initLeaderboardPage();
     } else if (path.includes('standings.html')) {
       initStandingsPage();
+    } else if (path.includes('winner.html')) {
+      initWinnerPage();
     } else if (path.includes('index.html') || path.endsWith('/') || path === '') {
       initDashboardPage();
     }
@@ -623,34 +625,34 @@ async function initDashboardPage() {
         if (exactEl) exactEl.textContent = userEntry.exactScore;
       }
 
-      // Populate top 3 preview
-      const previewContainer = document.getElementById('dashboardLeaderboardPreview');
-      if (previewContainer) {
-        previewContainer.innerHTML = '';
-        const top3 = lbEntries.slice(0, 3);
-        if (top3.length === 0) {
-          previewContainer.innerHTML = '<p style="color:var(--text-muted); font-size: 0.85rem; text-align:center; padding:1rem;">No participants yet.</p>';
-        } else {
-          top3.forEach(entry => {
-            let medal = '🥉';
-            if (entry.rank === 1) medal = '🥇';
-            else if (entry.rank === 2) medal = '🥈';
-
-            const row = document.createElement('div');
-            row.style.display = 'flex';
-            row.style.alignItems = 'center';
-            row.style.justifyContent = 'space-between';
-            row.style.padding = '0.75rem 0.5rem';
-            row.style.borderBottom = '1px solid var(--border-color)';
-            row.innerHTML = `
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:1.2rem;">${medal}</span>
-                <span style="font-weight:600; font-size:0.9rem;">${entry.user}</span>
-              </div>
-              <span style="font-weight:700; color:var(--accent-green); font-size:0.9rem;">${entry.totalPoints} pts</span>
-            `;
-            previewContainer.appendChild(row);
-          });
+      // Populate dynamic highlights gallery from images folder
+      const photoGallery = document.getElementById('dashboardPhotoGallery');
+      if (photoGallery) {
+        try {
+          const galleryResponse = await fetch('/api/gallery-images');
+          const galleryData = await galleryResponse.json();
+          if (galleryData.success && galleryData.images && galleryData.images.length > 0) {
+            photoGallery.innerHTML = '';
+            galleryData.images.forEach(img => {
+              const item = document.createElement('div');
+              item.className = 'gallery-item';
+              
+              // Human-readable caption formatting
+              let caption = img.replace(/_/g, ' ').replace(/\.[^/.]+$/, "");
+              caption = caption.charAt(0).toUpperCase() + caption.slice(1);
+              
+              item.innerHTML = `
+                <img src="images/${img}" alt="${caption}">
+                <div class="gallery-caption">${caption}</div>
+              `;
+              photoGallery.appendChild(item);
+            });
+          } else {
+            photoGallery.innerHTML = '<p style="color:var(--text-muted); font-size: 0.85rem; text-align:center; padding:2rem; width:100%;">No highlight photos uploaded yet.</p>';
+          }
+        } catch (err) {
+          console.error('Failed to load highlights gallery:', err);
+          photoGallery.innerHTML = '<p style="color:#ff5252; font-size: 0.85rem; text-align:center; padding:2rem; width:100%;">Failed to load gallery.</p>';
         }
       }
     } catch (err) {
@@ -1198,6 +1200,117 @@ async function initStandingsPage() {
     }
   }
 }
+
+// --- COMBINED OVERALL CHAMPIONS PAGE LOGIC ---
+async function initWinnerPage() {
+  const podiumContainer = document.getElementById('podiumContainer');
+  const body = document.getElementById('championsBody');
+  if (!podiumContainer || !body) return;
+
+  try {
+    const response = await fetch('/api/games/overall-leaderboard');
+    const data = await response.json();
+
+    if (data.success && data.leaderboard) {
+      const list = data.leaderboard;
+
+      // 1. Render Podium Section (top 3)
+      podiumContainer.innerHTML = '';
+      if (list.length === 0) {
+        podiumContainer.innerHTML = '<div style="color: var(--text-muted); padding: 3rem;">No participants recorded yet. Play mini games to list here!</div>';
+        body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No participants yet.</td></tr>';
+        return;
+      }
+
+      const top3 = list.slice(0, 3);
+      const podiumOrder = [];
+      
+      if (top3[1]) podiumOrder.push({ ...top3[1], place: '2nd', badgeClass: 'badge-2nd', avatarClass: 'avatar-2nd', cardClass: 'podium-2nd' }); // 2nd place
+      if (top3[0]) podiumOrder.push({ ...top3[0], place: '1st', badgeClass: 'badge-1st', avatarClass: 'avatar-1st', cardClass: 'podium-1st' }); // 1st place
+      if (top3[2]) podiumOrder.push({ ...top3[2], place: '3rd', badgeClass: 'badge-3rd', avatarClass: 'avatar-3rd', cardClass: 'podium-3rd' }); // 3rd place
+
+      podiumOrder.forEach(item => {
+        const card = document.createElement('div');
+        card.className = `podium-card ${item.cardClass}`;
+        
+        // Format username to reduce parts after a space to an initial (e.g., 'Suraj Kumar' -> 'Suraj K.')
+        const rawName = item.username;
+        const nameParts = rawName.trim().split(/\s+/);
+        let displayName = rawName;
+        if (nameParts.length > 1) {
+          displayName = `${nameParts[0]} ${nameParts[1].charAt(0).toUpperCase()}.`;
+        }
+
+        card.innerHTML = `
+          <span class="rank-badge ${item.badgeClass}">${item.place} Place</span>
+          <div class="podium-avatar ${item.avatarClass}">${displayName}</div>
+          <div class="podium-username" title="${item.username}">${item.username}</div>
+          <div class="podium-points">${item.overallPoints} pts</div>
+          <div class="podium-breakdown">
+            <div class="breakdown-row">
+              <span>Quiz:</span>
+              <span>${item.quizPoints} pts</span>
+            </div>
+            <div class="breakdown-row">
+              <span>Penalty:</span>
+              <span>${item.penaltyPoints} pts</span>
+            </div>
+            <div class="breakdown-row">
+              <span>Juggling:</span>
+              <span>${item.jugglingPoints} pts</span>
+            </div>
+            <div class="breakdown-row">
+              <span>Soccer:</span>
+              <span>${item.soccerPoints} pts</span>
+            </div>
+          </div>
+        `;
+        podiumContainer.appendChild(card);
+      });
+
+      // 2. Render standings table
+      body.innerHTML = '';
+      list.forEach(item => {
+        const row = document.createElement('tr');
+        
+        let rankHtml = item.rank;
+        if (item.rank === 1) rankHtml = '👑 1';
+        else if (item.rank === 2) rankHtml = '🥈 2';
+        else if (item.rank === 3) rankHtml = '🥉 3';
+
+        const user = window.getCurrentUser();
+        const isSelf = user && item.username === user.username;
+        if (isSelf) {
+          row.style.background = 'rgba(0, 230, 118, 0.05)';
+        }
+
+        row.innerHTML = `
+          <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+          <td>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+              <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+            </div>
+          </td>
+          <td style="text-align: center; color: var(--text-muted);">${item.quizPoints}</td>
+          <td style="text-align: center; color: var(--text-muted);">${item.penaltyPoints}</td>
+          <td style="text-align: center; color: var(--text-muted);">${item.jugglingPoints}</td>
+          <td style="text-align: center; color: var(--text-muted);">${item.soccerPoints}</td>
+          <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
+        `;
+        body.appendChild(row);
+      });
+    } else {
+      podiumContainer.innerHTML = '<div style="color: #ff5252; padding: 2rem;">Failed to retrieve standings.</div>';
+      body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #ff5252; padding: 2.5rem;">Failed to load data.</td></tr>';
+    }
+  } catch (err) {
+    console.error('Failed to load overall champions board:', err);
+    podiumContainer.innerHTML = '<div style="color: #ff5252; padding: 2rem;">Failed to connect to backend server.</div>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #ff5252; padding: 2.5rem;">Server connection failed.</td></tr>';
+  }
+}
+
 function getEarliestActiveDate(matches) {
   const now = new Date().getTime();
   const activeMatches = matches.filter(m => {
@@ -1479,120 +1592,108 @@ async function initGamesPage() {
 
     // Special Mini Soccer Showdown Promo Tile
     const gameCard = document.createElement('div');
-    gameCard.className = 'glass-card interactive-hover';
+    gameCard.className = 'glass-card';
     gameCard.style.padding = '1.75rem';
-    gameCard.style.cursor = 'pointer';
-    gameCard.style.border = '1px dashed var(--accent-green)';
+    gameCard.style.cursor = 'not-allowed';
+    gameCard.style.border = '1px solid var(--border-color)';
     gameCard.style.display = 'flex';
     gameCard.style.flexDirection = 'column';
     gameCard.style.justifyContent = 'space-between';
-    gameCard.addEventListener('click', () => {
-      window.location.href = 'football.html';
-    });
     gameCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
         <span>🏆 Mini Game</span>
-        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
       </div>
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🎮</span>
+        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">🎮</span>
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Mini Soccer Showdown</h3>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">Mini Soccer Showdown</h3>
           <p style="font-size: 0.75rem; color: var(--text-muted);">Defeat the AI in a physics-based soccer match!</p>
         </div>
       </div>
       <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        Click to play this game for fun!
+        This game is currently disabled.
       </div>
     `;
     grid.appendChild(gameCard);
 
     // Penalty Shootout Promo Tile
     const penaltyCard = document.createElement('div');
-    penaltyCard.className = 'glass-card interactive-hover';
+    penaltyCard.className = 'glass-card';
     penaltyCard.style.padding = '1.75rem';
-    penaltyCard.style.cursor = 'pointer';
-    penaltyCard.style.border = '1px dashed var(--accent-green)';
+    penaltyCard.style.cursor = 'not-allowed';
+    penaltyCard.style.border = '1px solid var(--border-color)';
     penaltyCard.style.display = 'flex';
     penaltyCard.style.flexDirection = 'column';
     penaltyCard.style.justifyContent = 'space-between';
-    penaltyCard.addEventListener('click', () => {
-      window.location.href = 'penalty.html';
-    });
     penaltyCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
         <span>🏆 Penalty Shootout</span>
-        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
       </div>
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🎯</span>
+        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">🎯</span>
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Penalty Challenge</h3>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">Penalty Challenge</h3>
           <p style="font-size: 0.75rem; color: var(--text-muted);">Beat the keeper in a 5-shot penalty shootout!</p>
         </div>
       </div>
       <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        Click to play this game for fun!
+        This game is currently disabled.
       </div>
     `;
     grid.appendChild(penaltyCard);
 
     // Quiz Game Promo Tile
     const quizCard = document.createElement('div');
-    quizCard.className = 'glass-card interactive-hover';
+    quizCard.className = 'glass-card';
     quizCard.style.padding = '1.75rem';
-    quizCard.style.cursor = 'pointer';
-    quizCard.style.border = '1px dashed var(--accent-green)';
+    quizCard.style.cursor = 'not-allowed';
+    quizCard.style.border = '1px solid var(--border-color)';
     quizCard.style.display = 'flex';
     quizCard.style.flexDirection = 'column';
     quizCard.style.justifyContent = 'space-between';
-    quizCard.addEventListener('click', () => {
-      window.location.href = 'quiz.html';
-    });
     quizCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
         <span>🏆 World Cup Quiz</span>
-        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY DAILY</span>
+        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
       </div>
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🧠</span>
+        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">🧠</span>
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">World Cup Quiz</h3>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">World Cup Quiz</h3>
           <p style="font-size: 0.75rem; color: var(--text-muted);">Answer trivia questions daily for a chance to win prizes!</p>
         </div>
       </div>
       <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        Click to test your skills and compete with others.
+        This quiz is currently disabled.
       </div>
     `;
     grid.appendChild(quizCard);
 
     // Juggling Pro Promo Tile
     const jugglingCard = document.createElement('div');
-    jugglingCard.className = 'glass-card interactive-hover';
+    jugglingCard.className = 'glass-card';
     jugglingCard.style.padding = '1.75rem';
-    jugglingCard.style.cursor = 'pointer';
-    jugglingCard.style.border = '1px dashed var(--accent-green)';
+    jugglingCard.style.cursor = 'not-allowed';
+    jugglingCard.style.border = '1px solid var(--border-color)';
     jugglingCard.style.display = 'flex';
     jugglingCard.style.flexDirection = 'column';
     jugglingCard.style.justifyContent = 'space-between';
-    jugglingCard.addEventListener('click', () => {
-      window.location.href = 'juggling.html';
-    });
     jugglingCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
         <span>🏆 Juggling Pro</span>
-        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
       </div>
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">⚽</span>
+        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">⚽</span>
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Juggling Pro</h3>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">Juggling Pro</h3>
           <p style="font-size: 0.75rem; color: var(--text-muted);">Keep the ball in the air against shifting wind!</p>
         </div>
       </div>
       <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        Click to test your juggling skills and compete online.
+        This game is currently disabled.
       </div>
     `;
     grid.appendChild(jugglingCard);
@@ -1649,83 +1750,6 @@ async function initGamesPage() {
     });
 
     container.appendChild(grid);
-
-    // Render Weekly Quiz Leaderboard on games.html
-    const leaderboardSection = document.getElementById('quizLeaderboardSection');
-    if (leaderboardSection) {
-      leaderboardSection.style.display = 'block';
-      const user = window.getCurrentUser();
-      
-      fetch('/api/quiz/weekly-leaderboard')
-        .then(res => res.json())
-        .then(leaderboard => {
-          const header = document.getElementById('leaderboardHeader');
-          const body = document.getElementById('leaderboardBody');
-          if (header && body) {
-            const isAdmin = user && user.role === 'admin';
-            if (isAdmin) {
-              header.innerHTML = `
-                <tr>
-                  <th style="padding: 1rem 0.75rem; width: 10%;">Rank</th>
-                  <th style="padding: 1rem 0.75rem;">User</th>
-                  <th style="padding: 1rem 0.75rem; text-align: center; width: 15%;">Plays</th>
-                  <th style="padding: 1rem 0.75rem; text-align: center; width: 20%;">Scores</th>
-                  <th style="padding: 1rem 0.75rem; text-align: center; width: 20%;">Avg Time</th>
-                  <th style="padding: 1rem 0.75rem; text-align: right; width: 15%;">Points</th>
-                </tr>`;
-            } else {
-              header.innerHTML = `
-                <tr>
-                  <th style="padding: 1rem 0.75rem; width: 15%;">Rank</th>
-                  <th style="padding: 1rem 0.75rem;">Username</th>
-                  <th style="padding: 1rem 0.75rem; text-align: center; width: 25%;">Days Played</th>
-                  <th style="padding: 1rem 0.75rem; text-align: right; width: 20%;">Points</th>
-                </tr>`;
-            }
-
-            body.innerHTML = '';
-            if (leaderboard.length === 0) {
-              body.innerHTML = `<tr><td colspan="${isAdmin ? 6 : 4}" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">No submissions yet this week.</td></tr>`;
-            } else {
-              leaderboard.forEach(entry => {
-                const isWinner = entry.rank === 1;
-                const row = document.createElement('tr');
-                if (isWinner) {
-                  row.style.background = 'rgba(255, 215, 0, 0.03)';
-                }
-                
-                if (isAdmin) {
-                  row.innerHTML = `
-                    <td style="padding: 1rem 0.75rem; font-weight: 700; color: ${isWinner ? '#ffd700' : 'var(--text-muted)'};">
-                      ${isWinner ? '👑 1' : entry.rank}
-                    </td>
-                    <td style="padding: 1rem 0.75rem; font-weight: 600; color: ${isWinner ? '#ffd700' : 'var(--text-main)'};">
-                      ${entry.username}
-                    </td>
-                    <td style="padding: 1rem 0.75rem; text-align: center; color: var(--text-muted);">${entry.attempts}</td>
-                    <td style="padding: 1rem 0.75rem; text-align: center;">${entry.totalScore} / ${entry.attempts * 5}</td>
-                    <td style="padding: 1rem 0.75rem; text-align: center; color: var(--text-muted);">${entry.avgTime}s</td>
-                    <td style="padding: 1rem 0.75rem; text-align: right; font-weight: 700; color: var(--accent-green);">${entry.totalPoints}</td>
-                  `;
-                } else {
-                  row.innerHTML = `
-                    <td style="padding: 1rem 0.75rem; font-weight: 700; color: ${isWinner ? '#ffd700' : 'var(--text-muted)'};">
-                      ${isWinner ? '👑 1' : entry.rank}
-                    </td>
-                    <td style="padding: 1rem 0.75rem; font-weight: 600; color: ${isWinner ? '#ffd700' : 'var(--text-main)'};">
-                      ${entry.username}
-                    </td>
-                    <td style="padding: 1rem 0.75rem; text-align: center; color: var(--text-muted);">${entry.attempts}</td>
-                    <td style="padding: 1rem 0.75rem; text-align: right; font-weight: 700; color: var(--accent-green);">${entry.totalPoints}</td>
-                  `;
-                }
-                body.appendChild(row);
-              });
-            }
-          }
-        })
-        .catch(err => console.error('Failed to load weekly leaderboard:', err));
-    }
   }
 }
 

@@ -418,6 +418,7 @@
     let attempt = 1;
     let score = 0;
     let globalTopScore = null;
+    let selectedDifficulty = 'medium';
 
     async function fetchTopScore() {
       try {
@@ -582,7 +583,10 @@
       // Determine if goalkeeper saved it
       // Goalie reaches the ball if the distance between goalie's dive position/hands and ball target is short
       const dist = Math.hypot(goalie.x - ball.targetX, goalie.y - ball.targetY);
-      const isSaved = dist < 70; // Catch area radius around goalie's body center during dive
+      let catchRadius = 70;
+      if (selectedDifficulty === 'easy') catchRadius = 50;
+      else if (selectedDifficulty === 'hard') catchRadius = 90;
+      const isSaved = dist < catchRadius; // Catch area radius around goalie's body center during dive
 
       if (!hitGoal) {
         // Missed target
@@ -642,8 +646,11 @@
       // Randomize reticle start and speed slightly
       reticle.x = 300 + Math.random() * 200;
       reticle.y = 150 + Math.random() * 100;
-      reticle.vx = (4 + Math.random() * 2) * (Math.random() < 0.5 ? 1 : -1);
-      reticle.vy = (3 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1);
+      let speedMult = 1.0;
+      if (selectedDifficulty === 'easy') speedMult = 0.6;
+      else if (selectedDifficulty === 'hard') speedMult = 1.4;
+      reticle.vx = (4 + Math.random() * 2) * speedMult * (Math.random() < 0.5 ? 1 : -1);
+      reticle.vy = (3 + Math.random() * 1.5) * speedMult * (Math.random() < 0.5 ? 1 : -1);
 
       updateTrackers();
       playSound('whistle');
@@ -665,7 +672,8 @@
             username: currentUser.username,
             token: currentUser.token,
             goals: finalScore,
-            timeTaken: parseFloat(finalTime.toFixed(2))
+            timeTaken: parseFloat(finalTime.toFixed(2)),
+            difficulty: selectedDifficulty
           })
         });
 
@@ -740,8 +748,11 @@
 
       // 2. Goalkeeper animation/diving
       if (goalie.state === 'diving') {
-        goalie.x += (goalie.diveTargetX - goalie.x) * 0.18;
-        goalie.y += (goalie.diveTargetY - goalie.y) * 0.18;
+        let diveEase = 0.18;
+        if (selectedDifficulty === 'easy') diveEase = 0.10;
+        else if (selectedDifficulty === 'hard') diveEase = 0.26;
+        goalie.x += (goalie.diveTargetX - goalie.x) * diveEase;
+        goalie.y += (goalie.diveTargetY - goalie.y) * diveEase;
       } else if (goalie.state === 'idle') {
         // Slight wiggling side to side
         goalie.wobbleTime += 0.08;

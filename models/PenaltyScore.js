@@ -4,6 +4,7 @@ const penaltyScoreSchema = new mongoose.Schema({
   username: { type: String, required: true },
   goals: { type: Number, required: true },
   timeTaken: { type: Number, required: true }, // time taken in seconds
+  difficulty: { type: String, default: 'medium' },
   createdAt: { type: Date, default: Date.now }
 });
 

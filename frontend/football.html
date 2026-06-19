@@ -467,7 +467,8 @@
             username: currentUser.username,
             token: currentUser.token,
             playerScore: p1Score,
-            aiScore: p2Score
+            aiScore: p2Score,
+            difficulty: selectedDifficulty
           })
         });
 
@@ -565,6 +566,7 @@
 
     let p1Score = 0;
     let p2Score = 0;
+    let selectedDifficulty = 'medium';
 
     // Entities
     const ball = {
@@ -809,7 +811,11 @@
 
       // Jump decisions
       if (ball.x > 500 && Math.hypot(ball.x - player2.x, ball.y - player2.y) < 100 && ball.y < player2.y) {
-        if (player2.isGrounded && Math.random() < 0.15) {
+        let jumpProb = 0.15;
+        if (selectedDifficulty === 'easy') jumpProb = 0.08;
+        else if (selectedDifficulty === 'hard') jumpProb = 0.25;
+
+        if (player2.isGrounded && Math.random() < jumpProb) {
           player2.vy = -player2.jumpForce;
         }
       }
@@ -1069,6 +1075,17 @@
       // Resume AudioContext if suspended (browser security)
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
+      }
+
+      if (selectedDifficulty === 'easy') {
+        player2.speed = 2.5;
+        player2.jumpForce = 7.0;
+      } else if (selectedDifficulty === 'medium') {
+        player2.speed = 4.2;
+        player2.jumpForce = 8.5;
+      } else if (selectedDifficulty === 'hard') {
+        player2.speed = 5.8;
+        player2.jumpForce = 10.0;
       }
 
       modal.classList.remove('show');

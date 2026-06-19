@@ -512,6 +512,7 @@
     let timeSurvived = 0;
     let startTime = 0;
     let timerInterval = null;
+    let selectedDifficulty = 'medium';
 
     // Ball attributes
     const ball = {
@@ -608,7 +609,8 @@
             token: currentUser.token,
             score: score,
             maxCombo: maxCombo,
-            timeSurvived: parseFloat(timeSurvived.toFixed(2))
+            timeSurvived: parseFloat(timeSurvived.toFixed(2)),
+            difficulty: selectedDifficulty
           })
         });
 
@@ -669,11 +671,14 @@
     function updateWind() {
       wind.updateTimer--;
       if (wind.updateTimer <= 0) {
-        // Change wind: 30% chance calm, otherwise force between -0.12 and +0.12
+        // Change wind: 30% chance calm, otherwise force based on difficulty
         if (Math.random() < 0.3) {
           wind.targetX = 0;
         } else {
-          wind.targetX = (Math.random() - 0.5) * 0.24;
+          let maxWindForce = 0.24;
+          if (selectedDifficulty === 'easy') maxWindForce = 0.10;
+          else if (selectedDifficulty === 'hard') maxWindForce = 0.48;
+          wind.targetX = (Math.random() - 0.5) * maxWindForce;
         }
         wind.updateTimer = 300; // Change every 5 seconds
       }
@@ -847,6 +852,14 @@
       ball.vy = 0;
       ball.rotation = 0;
       ball.angularVelocity = 0;
+
+      if (selectedDifficulty === 'easy') {
+        ball.gravity = 0.30;
+      } else if (selectedDifficulty === 'medium') {
+        ball.gravity = 0.35;
+      } else if (selectedDifficulty === 'hard') {
+        ball.gravity = 0.42;
+      }
       
       particles = [];
       scorePopups = [];
@@ -1226,6 +1239,7 @@
 
     // Handle authentication dropdown layout dynamically (shared with dashboard pages)
     const profileTrigger = document.createElement('div'); // Mock for auth menu
+
   </script>
 </body>
 </html>

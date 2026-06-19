@@ -706,7 +706,7 @@ app.get('/api/penalty/top', async (req, res) => {
 
 // Submit a new penalty shootout score
 app.post('/api/penalty/submit', async (req, res) => {
-  const { username, goals, timeTaken } = req.body;
+  const { username, goals, timeTaken, difficulty } = req.body;
   if (!username || goals === undefined || timeTaken === undefined) {
     return res.status(400).json({ success: false, message: "Invalid parameters: username, goals, timeTaken are required" });
   }
@@ -750,7 +750,8 @@ app.post('/api/penalty/submit', async (req, res) => {
     const newScore = new PenaltyScore({
       username: username.trim(),
       goals: goalsScored,
-      timeTaken: secondsTaken
+      timeTaken: secondsTaken,
+      difficulty: difficulty || 'medium'
     });
 
     await newScore.save();
@@ -779,7 +780,7 @@ app.get('/api/juggling/top', async (req, res) => {
 
 // Submit a new juggling score
 app.post('/api/juggling/submit', async (req, res) => {
-  const { username, score, maxCombo, timeSurvived } = req.body;
+  const { username, score, maxCombo, timeSurvived, difficulty } = req.body;
   if (!username || score === undefined || maxCombo === undefined || timeSurvived === undefined) {
     return res.status(400).json({ success: false, message: "Invalid parameters: username, score, maxCombo, timeSurvived are required" });
   }
@@ -827,7 +828,8 @@ app.post('/api/juggling/submit', async (req, res) => {
       username: username.trim(),
       score: finalScore,
       maxCombo: finalCombo,
-      timeSurvived: secondsSurvived
+      timeSurvived: secondsSurvived,
+      difficulty: difficulty || 'medium'
     });
 
     await newScore.save();
@@ -866,7 +868,7 @@ app.get('/api/soccer/top', async (req, res) => {
 
 // Submit a new soccer showdown score
 app.post('/api/soccer/submit', async (req, res) => {
-  const { username, playerScore, aiScore } = req.body;
+  const { username, playerScore, aiScore, difficulty } = req.body;
   if (!username || playerScore === undefined || aiScore === undefined) {
     return res.status(400).json({ success: false, message: "Invalid parameters: username, playerScore, aiScore are required" });
   }
@@ -928,7 +930,8 @@ app.post('/api/soccer/submit', async (req, res) => {
     const newScore = new SoccerScore({
       username: username.trim(),
       playerScore: pScore,
-      aiScore: aScore
+      aiScore: aScore,
+      difficulty: difficulty || 'medium'
     });
 
     await newScore.save();
@@ -936,6 +939,163 @@ app.post('/api/soccer/submit', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error saving soccer score" });
+  }
+});
+
+// --- GALLERY IMAGES DIRECTORY LISTING ---
+app.get('/api/gallery-images', (req, res) => {
+  const fs = require('fs');
+  const dirPath = path.join(__dirname, './frontend/images');
+  
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  try {
+    const files = fs.readdirSync(dirPath);
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+    const images = files.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return imageExtensions.includes(ext);
+    });
+    return res.json({ success: true, images });
+  } catch (err) {
+    console.error('Error reading images directory:', err);
+    return res.status(500).json({ success: false, message: 'Failed to read images folder' });
+  }
+});
+
+// --- OVERALL GALAXY CHAMPIONS LEADERBOARD ---
+app.get('/api/games/overall-leaderboard', async (req, res) => {
+  try {
+    const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
+    
+    // Fetch all submissions in parallel
+    const [quizSubmissions, penaltyScores, jugglingScores, soccerScores] = await Promise.all([
+      QuizSubmission.find({}),
+      PenaltyScore.find({}),
+      JugglingScore.find({}),
+      SoccerScore.find({})
+    ]);
+
+    // Group submissions by username
+    const quizMap = {}; // username -> sum of points
+    quizSubmissions.forEach(q => {
+      const u = q.username.trim();
+      quizMap[u] = (quizMap[u] || 0) + q.points;
+    });
+
+    // Helper to calculate scaled penalty points
+    const getPenaltyPoints = (p) => {
+      const difficulty = p.difficulty || 'medium';
+      const multiplier = difficulty === 'hard' ? 2.0 : (difficulty === 'easy' ? 1.0 : 1.5);
+      const rawPoints = (p.goals * 20) + Math.max(0, Math.round((50 - p.timeTaken) * 2));
+      return Math.round(rawPoints * multiplier);
+    };
+
+    const penaltyMap = {}; // username -> best penalty record
+    penaltyScores.forEach(p => {
+      const u = p.username.trim();
+      const existing = penaltyMap[u];
+      if (!existing || getPenaltyPoints(p) > getPenaltyPoints(existing)) {
+        penaltyMap[u] = p;
+      }
+    });
+
+    // Helper to calculate scaled juggling points
+    const getJugglingPoints = (j) => {
+      const difficulty = j.difficulty || 'medium';
+      const multiplier = difficulty === 'hard' ? 2.0 : (difficulty === 'easy' ? 1.0 : 1.5);
+      const rawPoints = j.score;
+      return Math.round(rawPoints * multiplier);
+    };
+
+    const jugglingMap = {}; // username -> best juggling record
+    jugglingScores.forEach(j => {
+      const u = j.username.trim();
+      const existing = jugglingMap[u];
+      if (!existing || getJugglingPoints(j) > getJugglingPoints(existing)) {
+        jugglingMap[u] = j;
+      }
+    });
+
+    // Helper to calculate scaled soccer points
+    const getSoccerPoints = (s) => {
+      const difficulty = s.difficulty || 'medium';
+      const multiplier = difficulty === 'hard' ? 2.0 : (difficulty === 'easy' ? 1.0 : 1.5);
+      const diff = s.playerScore - s.aiScore;
+      const outcomeBonus = s.playerScore > s.aiScore ? 50 : (s.playerScore === s.aiScore ? 20 : 0);
+      const rawPoints = Math.max(0, (diff * 15) + (s.playerScore * 10) + outcomeBonus);
+      return Math.round(rawPoints * multiplier);
+    };
+
+    const soccerMap = {}; // username -> best soccer record
+    soccerScores.forEach(s => {
+      const u = s.username.trim();
+      const existing = soccerMap[u];
+      if (!existing || getSoccerPoints(s) > getSoccerPoints(existing)) {
+        soccerMap[u] = s;
+      }
+    });
+
+    // Compile leaderboard entries
+    const entries = users.map(user => {
+      const username = user.username.trim();
+
+      // 1. Quiz points (summed)
+      const quizPoints = quizMap[username] || 0;
+
+      // 2. Penalty points (best game)
+      let penaltyPoints = 0;
+      const bestPenalty = penaltyMap[username];
+      if (bestPenalty) {
+        penaltyPoints = getPenaltyPoints(bestPenalty);
+      }
+
+      // 3. Juggling points (best game)
+      let jugglingPoints = 0;
+      const bestJuggling = jugglingMap[username];
+      if (bestJuggling) {
+        jugglingPoints = getJugglingPoints(bestJuggling);
+      }
+
+      // 4. Soccer points (best game)
+      let soccerPoints = 0;
+      const bestSoccer = soccerMap[username];
+      if (bestSoccer) {
+        soccerPoints = getSoccerPoints(bestSoccer);
+      }
+
+      const overallPoints = quizPoints + penaltyPoints + jugglingPoints + soccerPoints;
+
+      return {
+        username,
+        avatar: username.charAt(0).toUpperCase(),
+        quizPoints,
+        penaltyPoints,
+        jugglingPoints,
+        soccerPoints,
+        overallPoints
+      };
+    });
+
+    // Sort by overall points desc, then username asc
+    entries.sort((a, b) => {
+      if (b.overallPoints !== a.overallPoints) {
+        return b.overallPoints - a.overallPoints;
+      }
+      return a.username.localeCompare(b.username);
+    });
+
+    // Add rank
+    entries.forEach((e, idx) => {
+      e.rank = idx + 1;
+    });
+
+    res.json({ success: true, leaderboard: entries });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Failed to generate overall champions board" });
   }
 });
 

@@ -1567,5 +1567,84 @@ input, select, button, textarea {
   }
 }
 
+/* Scrollable Gallery Carousel */
+.photo-gallery-carousel {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0.5rem 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent-green) rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.photo-gallery-carousel::-webkit-scrollbar {
+  height: 6px;
+}
+
+.photo-gallery-carousel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.photo-gallery-carousel::-webkit-scrollbar-thumb {
+  background-color: var(--accent-green);
+  border-radius: 10px;
+}
+
+.gallery-item {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+}
+
+.gallery-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(7, 13, 25, 0.95) 0%, rgba(7, 13, 25, 0) 100%);
+  padding: 0.75rem 1rem;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Mobile Bottom Navigation Responsive Tweaks */
+@media (max-width: 480px) {
+  .mobile-nav-link .mobile-nav-text {
+    font-size: 0.6rem;
+    letter-spacing: -0.3px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobile-nav-link .mobile-nav-text {
+    display: none; /* Hide labels to avoid overflow and clipping on small mobile viewports */
+  }
+  .mobile-nav-bar {
+    padding: 0.75rem 0;
+  }
+}
+
+
 
 

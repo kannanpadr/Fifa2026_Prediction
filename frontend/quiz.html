@@ -113,6 +113,13 @@
       border: 1px solid rgba(239, 83, 80, 0.3);
     }
 
+    .diff-expert {
+      background: rgba(186, 104, 200, 0.15);
+      color: #ba68c8;
+      border: 1px solid rgba(186, 104, 200, 0.3);
+    }
+
+
     .quiz-question {
       font-family: var(--font-display);
       font-size: 1.4rem;
@@ -420,7 +427,7 @@
     const storedScore = localStorage.getItem('quizCompletedScore_' + user.username);
     const storedPoints = localStorage.getItem('quizCompletedPoints_' + user.username);
 
-    if (storedCompletionDate === dateString) {
+    if (storedCompletionDate === dateString && user.role !== 'admin') {
       document.getElementById('quizStatusBox').style.display = 'block';
       document.getElementById('todayScoreText').textContent = `Your score: ${storedScore}/5 correct. Points earned: ${storedPoints || 0}. Complete another quiz tomorrow!`;
       document.getElementById('startBtn').textContent = 'QUIZ COMPLETED';
@@ -437,7 +444,7 @@
         });
         const result = await response.json();
         if (response.ok && result.success) {
-          if (result.completedToday) {
+          if (result.completedToday && user.role !== 'admin') {
             // Update localStorage to stay in sync
             localStorage.setItem('quizCompletedDate_' + user.username, dateString);
             localStorage.setItem('quizCompletedScore_' + user.username, result.score);
@@ -449,8 +456,8 @@
             document.getElementById('startBtn').disabled = true;
           } else {
             dailyQuestions = result.questions;
-            // Only enable button if not completed today in localStorage
-            if (localStorage.getItem('quizCompletedDate_' + user.username) !== dateString) {
+            // Only enable button if not completed today in localStorage OR if admin
+            if (user.role === 'admin' || localStorage.getItem('quizCompletedDate_' + user.username) !== dateString) {
               document.getElementById('startBtn').disabled = false;
             }
           }
@@ -518,6 +525,7 @@
       if (qData.d === 'easy') badge.classList.add('diff-easy');
       else if (qData.d === 'medium') badge.classList.add('diff-medium');
       else if (qData.d === 'hard') badge.classList.add('diff-hard');
+      else if (qData.d === 'expert') badge.classList.add('diff-expert');
 
       // Update indicator dots active state
       const dots = document.querySelectorAll('.ind-dot');
@@ -529,11 +537,21 @@
       const optionsContainer = document.getElementById('optionsContainer');
       optionsContainer.innerHTML = '';
 
-      qData.o.forEach((opt, idx) => {
+      // Create option objects mapping each option to its original index
+      const mappedOptions = qData.o.map((opt, idx) => ({ text: opt, originalIdx: idx }));
+
+      // Shuffle using Fisher-Yates algorithm to mix position
+      for (let i = mappedOptions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [mappedOptions[i], mappedOptions[j]] = [mappedOptions[j], mappedOptions[i]];
+      }
+
+      mappedOptions.forEach((opt) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
-        btn.textContent = opt;
-        btn.addEventListener('click', () => handleAnswer(idx, btn));
+        btn.textContent = opt.text;
+        btn.dataset.originalIdx = opt.originalIdx;
+        btn.addEventListener('click', () => handleAnswer(opt.originalIdx, btn));
         optionsContainer.appendChild(btn);
       });
     }
@@ -556,7 +574,12 @@
         playSound('correct');
       } else {
         btn.classList.add('wrong');
-        allButtons[correctIdx].classList.add('correct');
+        // Find and highlight correct answer by original index
+        allButtons.forEach(b => {
+          if (parseInt(b.dataset.originalIdx) === correctIdx) {
+            b.classList.add('correct');
+          }
+        });
         dots[currentQ].classList.add('wrong');
         playSound('wrong');
       }

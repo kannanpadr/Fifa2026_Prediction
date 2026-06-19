@@ -406,6 +406,25 @@
       window.location.href = 'login.html';
     }
 
+    async function checkAttemptLimit() {
+      if (currentUser.role === 'admin') return;
+      try {
+        const response = await fetch('/api/games/status', {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          if (data.status.soccer.attempts >= data.status.soccer.limit) {
+            alert("Game locked: You have reached the maximum of " + data.status.soccer.limit + " attempts today!");
+            window.location.href = 'games.html';
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    checkAttemptLimit();
+
     // --- LEADERBOARD & SUBMISSIONS ---
     async function loadLeaderboard() {
       try {

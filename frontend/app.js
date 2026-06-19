@@ -1664,31 +1664,58 @@ async function initGamesPage() {
   const filterSelect = document.getElementById('gamesStatusFilter');
   if (!container) return;
 
+  const user = window.getCurrentUser();
   let allMatches = [];
+  let gamesStatus = null;
 
   try {
     const response = await fetch('/api/matches');
     allMatches = await response.json();
-    renderGames(allMatches);
+
+    if (user && user.token) {
+      try {
+        const statusResponse = await fetch('/api/games/status', {
+          headers: { 'Authorization': `Bearer ${user.token}` }
+        });
+        if (statusResponse.ok) {
+          const statusResult = await statusResponse.json();
+          if (statusResult.success) {
+            gamesStatus = statusResult.status;
+          }
+        }
+      } catch (statusErr) {
+        console.error('Failed to load games status:', statusErr);
+      }
+    }
+
+    renderGames(allMatches, gamesStatus);
 
     if (filterSelect) {
       filterSelect.addEventListener('change', () => {
         const val = filterSelect.value;
         if (val === 'All') {
-          renderGames(allMatches);
+          renderGames(allMatches, gamesStatus);
         } else {
           const filtered = allMatches.filter(m => m.status === val);
-          renderGames(filtered);
+          renderGames(filtered, gamesStatus);
         }
       });
     }
   } catch (err) {
     console.error(err);
-    container.innerHTML = '<div class="glass-card" style="color: #ff5252; text-align: center; padding: 3rem;">Failed to load matches.</div>';
+    container.innerHTML = '<div class="glass-card" style="color: #ff5252; text-align: center; padding: 3rem;">Failed to load games.</div>';
   }
 
-  function renderGames(matchesList) {
+  function renderGames(matchesList, gamesStatus) {
     container.innerHTML = '';
+    const status = gamesStatus || {
+      quiz: { completedToday: false, attempts: 0, limit: 1 },
+      juggling: { attempts: 0, limit: 5, bestScore: 0 },
+      penalty: { attempts: 0, limit: 5, bestScore: 0 },
+      soccer: { attempts: 0, limit: 5, bestScore: 0 }
+    };
+    const isAdmin = user && user.role === 'admin';
+
     if (matchesList.length === 0) {
       container.innerHTML = `
         <div class="glass-card" style="text-align: center; padding: 4rem;">
@@ -1704,113 +1731,201 @@ async function initGamesPage() {
     grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(320px, 1fr))';
     grid.style.gap = '1.5rem';
 
-    // Special Mini Soccer Showdown Promo Tile
-    const gameCard = document.createElement('div');
-    gameCard.className = 'glass-card';
-    gameCard.style.padding = '1.75rem';
-    gameCard.style.cursor = 'not-allowed';
-    gameCard.style.border = '1px solid var(--border-color)';
-    gameCard.style.display = 'flex';
-    gameCard.style.flexDirection = 'column';
-    gameCard.style.justifyContent = 'space-between';
-    gameCard.innerHTML = `
-      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
-        <span>🏆 Mini Game</span>
-        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">🎮</span>
-        <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">Mini Soccer Showdown</h3>
-          <p style="font-size: 0.75rem; color: var(--text-muted);">Defeat the AI in a physics-based soccer match!</p>
-        </div>
-      </div>
-      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        This game is currently disabled.
-      </div>
-    `;
-    grid.appendChild(gameCard);
-
-    // Penalty Shootout Promo Tile
-    const penaltyCard = document.createElement('div');
-    penaltyCard.className = 'glass-card';
-    penaltyCard.style.padding = '1.75rem';
-    penaltyCard.style.cursor = 'not-allowed';
-    penaltyCard.style.border = '1px solid var(--border-color)';
-    penaltyCard.style.display = 'flex';
-    penaltyCard.style.flexDirection = 'column';
-    penaltyCard.style.justifyContent = 'space-between';
-    penaltyCard.innerHTML = `
-      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
-        <span>🏆 Penalty Shootout</span>
-        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
-      </div>
-      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">🎯</span>
-        <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">Penalty Challenge</h3>
-          <p style="font-size: 0.75rem; color: var(--text-muted);">Beat the keeper in a 5-shot penalty shootout!</p>
-        </div>
-      </div>
-      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        This game is currently disabled.
-      </div>
-    `;
-    grid.appendChild(penaltyCard);
-
-    // Quiz Game Promo Tile
+    // 1. World Cup Quiz (Priority 1)
+    const quizLocked = status.quiz.completedToday && !isAdmin;
     const quizCard = document.createElement('div');
-    quizCard.className = 'glass-card';
+    quizCard.className = 'glass-card interactive-hover';
     quizCard.style.padding = '1.75rem';
-    quizCard.style.cursor = 'not-allowed';
-    quizCard.style.border = '1px solid var(--border-color)';
+    if (quizLocked) {
+      quizCard.style.opacity = '0.6';
+      quizCard.style.cursor = 'not-allowed';
+      quizCard.classList.remove('interactive-hover');
+    } else {
+      quizCard.style.cursor = 'pointer';
+    }
+    quizCard.style.border = '1px dashed var(--accent-green)';
     quizCard.style.display = 'flex';
     quizCard.style.flexDirection = 'column';
     quizCard.style.justifyContent = 'space-between';
+    quizCard.addEventListener('click', () => {
+      if (quizLocked) {
+        window.showToast("World Cup Quiz is locked! You have already played today's quiz.", 'error');
+      } else {
+        window.location.href = 'quiz.html';
+      }
+    });
+
+    const quizBadge = quizLocked
+      ? `<span class="badge" style="background-color: #ef5350; color: #fff; font-weight: 700;">LOCKED</span>`
+      : `<span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>`;
+
+    const quizTitle = quizLocked ? `🔒 World Cup Quiz` : `🧠 World Cup Quiz`;
+
     quizCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
-        <span>🏆 World Cup Quiz</span>
-        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
+        <span>🏆 Quiz • Priority 1</span>
+        ${quizBadge}
       </div>
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">🧠</span>
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🧠</span>
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">World Cup Quiz</h3>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${quizLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">${quizTitle}</h3>
           <p style="font-size: 0.75rem; color: var(--text-muted);">Answer trivia questions daily for a chance to win prizes!</p>
         </div>
       </div>
-      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        This quiz is currently disabled.
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.5rem;">
+        <span>Attempts: ${status.quiz.attempts}/${status.quiz.limit} today</span>
+        <span>Status: ${status.quiz.completedToday ? 'Completed' : 'Available'}</span>
       </div>
     `;
     grid.appendChild(quizCard);
 
-    // Juggling Pro Promo Tile
+    // 2. Juggling Pro (Priority 2)
+    const jugglingLocked = status.juggling.attempts >= status.juggling.limit && !isAdmin;
     const jugglingCard = document.createElement('div');
-    jugglingCard.className = 'glass-card';
+    jugglingCard.className = 'glass-card interactive-hover';
     jugglingCard.style.padding = '1.75rem';
-    jugglingCard.style.cursor = 'not-allowed';
-    jugglingCard.style.border = '1px solid var(--border-color)';
+    if (jugglingLocked) {
+      jugglingCard.style.opacity = '0.6';
+      jugglingCard.style.cursor = 'not-allowed';
+      jugglingCard.classList.remove('interactive-hover');
+    } else {
+      jugglingCard.style.cursor = 'pointer';
+    }
+    jugglingCard.style.border = '1px dashed var(--accent-green)';
     jugglingCard.style.display = 'flex';
     jugglingCard.style.flexDirection = 'column';
     jugglingCard.style.justifyContent = 'space-between';
+    jugglingCard.addEventListener('click', () => {
+      if (jugglingLocked) {
+        window.showToast('Juggling Pro is locked! You have exhausted all ' + status.juggling.limit + ' attempts today.', 'error');
+      } else {
+        window.location.href = 'juggling.html';
+      }
+    });
+
+    const jugglingBadge = jugglingLocked
+      ? `<span class="badge" style="background-color: #ef5350; color: #fff; font-weight: 700;">LOCKED</span>`
+      : `<span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>`;
+
+    const jugglingTitle = jugglingLocked ? `🔒 Juggling Pro` : `⚽ Juggling Pro`;
+
     jugglingCard.innerHTML = `
       <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
-        <span>🏆 Juggling Pro</span>
-        <span class="badge" style="background-color: var(--text-muted); color: var(--text-main); font-weight: 700; opacity: 0.6;">DISABLED</span>
+        <span>🏆 Juggling • Priority 2</span>
+        ${jugglingBadge}
       </div>
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
-        <span style="font-size: 2.2rem; filter: grayscale(1); opacity: 0.5;">⚽</span>
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">⚽</span>
         <div>
-          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--text-muted); margin-bottom: 2px;">Juggling Pro</h3>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${jugglingLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">${jugglingTitle}</h3>
           <p style="font-size: 0.75rem; color: var(--text-muted);">Keep the ball in the air against shifting wind!</p>
         </div>
       </div>
-      <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 1.25rem;">
-        This game is currently disabled.
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.5rem;">
+        <span>Attempts: ${status.juggling.attempts}/${status.juggling.limit}</span>
+        <span>Best Score: ${status.juggling.bestScore} bounces</span>
       </div>
     `;
     grid.appendChild(jugglingCard);
+
+    // 3. Penalty Challenge (Priority 3)
+    const penaltyLocked = status.penalty.attempts >= status.penalty.limit && !isAdmin;
+    const penaltyCard = document.createElement('div');
+    penaltyCard.className = 'glass-card interactive-hover';
+    penaltyCard.style.padding = '1.75rem';
+    if (penaltyLocked) {
+      penaltyCard.style.opacity = '0.6';
+      penaltyCard.style.cursor = 'not-allowed';
+      penaltyCard.classList.remove('interactive-hover');
+    } else {
+      penaltyCard.style.cursor = 'pointer';
+    }
+    penaltyCard.style.border = '1px dashed var(--accent-green)';
+    penaltyCard.style.display = 'flex';
+    penaltyCard.style.flexDirection = 'column';
+    penaltyCard.style.justifyContent = 'space-between';
+    penaltyCard.addEventListener('click', () => {
+      if (penaltyLocked) {
+        window.showToast('Penalty Challenge is locked! You have exhausted all ' + status.penalty.limit + ' attempts today.', 'error');
+      } else {
+        window.location.href = 'penalty.html';
+      }
+    });
+
+    const penaltyBadge = penaltyLocked
+      ? `<span class="badge" style="background-color: #ef5350; color: #fff; font-weight: 700;">LOCKED</span>`
+      : `<span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>`;
+
+    const penaltyTitle = penaltyLocked ? `🔒 Penalty Challenge` : `🎯 Penalty Challenge`;
+
+    penaltyCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 Penalty Challenge • Priority 3</span>
+        ${penaltyBadge}
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🎯</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${penaltyLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">${penaltyTitle}</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Beat the keeper in a 5-shot penalty shootout!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.5rem;">
+        <span>Attempts: ${status.penalty.attempts}/${status.penalty.limit}</span>
+        <span>Best Score: ${status.penalty.bestScore} goals</span>
+      </div>
+    `;
+    grid.appendChild(penaltyCard);
+
+    // 4. Mini Soccer Showdown (Priority 4)
+    const soccerLocked = status.soccer.attempts >= status.soccer.limit && !isAdmin;
+    const gameCard = document.createElement('div');
+    gameCard.className = 'glass-card interactive-hover';
+    gameCard.style.padding = '1.75rem';
+    if (soccerLocked) {
+      gameCard.style.opacity = '0.6';
+      gameCard.style.cursor = 'not-allowed';
+      gameCard.classList.remove('interactive-hover');
+    } else {
+      gameCard.style.cursor = 'pointer';
+    }
+    gameCard.style.border = '1px dashed var(--accent-green)';
+    gameCard.style.display = 'flex';
+    gameCard.style.flexDirection = 'column';
+    gameCard.style.justifyContent = 'space-between';
+    gameCard.addEventListener('click', () => {
+      if (soccerLocked) {
+        window.showToast('Mini Soccer Showdown is locked! You have exhausted all ' + status.soccer.limit + ' attempts today.', 'error');
+      } else {
+        window.location.href = 'football.html';
+      }
+    });
+
+    const soccerBadge = soccerLocked
+      ? `<span class="badge" style="background-color: #ef5350; color: #fff; font-weight: 700;">LOCKED</span>`
+      : `<span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>`;
+
+    const soccerTitle = soccerLocked ? `🔒 Mini Soccer Showdown` : `⚽ Mini Soccer Showdown`;
+
+    gameCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 Soccer Showdown • Priority 4</span>
+        ${soccerBadge}
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">🎮</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${soccerLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">${soccerTitle}</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Defeat the AI in a physics-based soccer match!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.5rem;">
+        <span>Attempts: ${status.soccer.attempts}/${status.soccer.limit}</span>
+        <span>Best Score: ${status.soccer.bestScore} goals</span>
+      </div>
+    `;
+    grid.appendChild(gameCard);
 
     // Show only the 3 game tiles to make a single row (0 matches)
     const firstRowMatches = matchesList.slice(0, 0);
@@ -1819,7 +1934,6 @@ async function initGamesPage() {
       const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;
       const flag2Url = `https://flagcdn.com/24x18/${match.team2Code}.png`;
 
-      // Status badge class
       let statusBadgeClass = 'badge-upcoming';
       if (match.status === 'Live') statusBadgeClass = 'badge-live';
       if (match.status === 'Completed') statusBadgeClass = 'badge-completed';

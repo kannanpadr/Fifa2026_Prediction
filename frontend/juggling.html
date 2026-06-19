@@ -396,6 +396,25 @@
       window.location.href = 'login.html';
     }
 
+    async function checkAttemptLimit() {
+      if (currentUser.role === 'admin') return;
+      try {
+        const response = await fetch('/api/games/status', {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          if (data.status.juggling.attempts >= data.status.juggling.limit) {
+            alert("Game locked: You have reached the maximum of " + data.status.juggling.limit + " attempts today!");
+            window.location.href = 'games.html';
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    checkAttemptLimit();
+
     // --- AUDIO SYNTHESIS ENGINE ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let soundEnabled = true;

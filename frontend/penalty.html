@@ -299,6 +299,25 @@
       window.location.href = 'login.html';
     }
 
+    async function checkAttemptLimit() {
+      if (currentUser.role === 'admin') return;
+      try {
+        const response = await fetch('/api/games/status', {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          if (data.status.penalty.attempts >= data.status.penalty.limit) {
+            alert("Game locked: You have reached the maximum of " + data.status.penalty.limit + " attempts today!");
+            window.location.href = 'games.html';
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    checkAttemptLimit();
+
     // --- GAME TIMER VARIABLES ---
     let timerInterval = null;
     let startTime = 0;
@@ -725,6 +744,11 @@
         modalTitle.style.color = '#ef5350';
         modalSubtitle.textContent = `You scored ${score}/5 goals. Practice makes perfect!`;
         playSound('lose');
+
+        // Show win submission section and trigger auto-save for defeat as well
+        document.getElementById('winSubmitSection').style.display = 'block';
+        document.getElementById('gameTimeTakenResult').textContent = `Time Taken: ${timeElapsed.toFixed(2)} seconds`;
+        autoSubmitScore(score, timeElapsed);
       }
     }
 

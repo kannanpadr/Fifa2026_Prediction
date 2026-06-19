@@ -122,8 +122,12 @@
         <!-- Right Section: Winner & Group Highlights Gallery -->
         <div class="glass-card" style="display:flex; flex-direction:column; gap: 1rem;">
           <h2 class="card-title" style="margin-bottom: 0.5rem;"><span>📸</span> Winner & Group Gallery</h2>
-          <div class="photo-gallery-carousel" id="dashboardPhotoGallery">
-            <div style="text-align: center; padding: 3rem; color: var(--text-muted); width: 100%;">Loading gallery photos...</div>
+          <div class="gallery-wrapper" style="position: relative; display: flex; align-items: center; width: 100%;">
+            <button class="gallery-nav-btn" id="galleryPrevBtn" style="position: absolute; left: 8px; z-index: 10; display: none;">◀</button>
+            <div class="photo-gallery-carousel" id="dashboardPhotoGallery" style="width: 100%;">
+              <div style="text-align: center; padding: 3rem; color: var(--text-muted); width: 100%;">Loading gallery photos...</div>
+            </div>
+            <button class="gallery-nav-btn" id="galleryNextBtn" style="position: absolute; right: 8px; z-index: 10; display: none;">▶</button>
           </div>
         </div>
 
@@ -165,6 +169,17 @@
   <div class="visits-counter" id="visitsCounter">
     <span class="status-dot"></span>
     Visits: <span class="count-val" id="visitCountVal">...</span>
+  </div>
+
+  <!-- Image Zoom Modal / Lightbox -->
+  <div id="imageZoomModal" class="zoom-modal">
+    <span class="close-zoom" id="closeZoomBtn">&times;</span>
+    <button class="zoom-nav-btn zoom-prev-btn" id="zoomPrevBtn" style="display: none;">◀</button>
+    <div class="zoom-modal-content">
+      <img id="zoomedImage" class="zoomed-image" src="" alt="">
+      <div id="zoomCaption" class="zoom-caption"></div>
+    </div>
+    <button class="zoom-nav-btn zoom-next-btn" id="zoomNextBtn" style="display: none;">▶</button>
   </div>
 
   <script src="app.js"></script>

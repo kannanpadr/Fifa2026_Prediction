@@ -632,10 +632,14 @@ async function initDashboardPage() {
           const galleryResponse = await fetch('/api/gallery-images');
           const galleryData = await galleryResponse.json();
           if (galleryData.success && galleryData.images && galleryData.images.length > 0) {
+            const images = galleryData.images;
+            let currentZoomIndex = 0;
+
             photoGallery.innerHTML = '';
-            galleryData.images.forEach(img => {
+            images.forEach((img, idx) => {
               const item = document.createElement('div');
               item.className = 'gallery-item';
+              item.dataset.index = idx;
               
               // Human-readable caption formatting
               let caption = img.replace(/_/g, ' ').replace(/\.[^/.]+$/, "");
@@ -647,6 +651,116 @@ async function initDashboardPage() {
               `;
               photoGallery.appendChild(item);
             });
+
+            // Zoom click handlers & elements
+            const zoomModal = document.getElementById('imageZoomModal');
+            const zoomedImg = document.getElementById('zoomedImage');
+            const zoomCap = document.getElementById('zoomCaption');
+            const closeZoomBtn = document.getElementById('closeZoomBtn');
+            const zoomPrevBtn = document.getElementById('zoomPrevBtn');
+            const zoomNextBtn = document.getElementById('zoomNextBtn');
+            const galleryPrevBtn = document.getElementById('galleryPrevBtn');
+            const galleryNextBtn = document.getElementById('galleryNextBtn');
+
+            // Setup buttons visibility based on count
+            const showArrows = images.length > 1;
+            if (galleryPrevBtn) galleryPrevBtn.style.display = showArrows ? 'flex' : 'none';
+            if (galleryNextBtn) galleryNextBtn.style.display = showArrows ? 'flex' : 'none';
+            if (zoomPrevBtn) zoomPrevBtn.style.display = showArrows ? 'block' : 'none';
+            if (zoomNextBtn) zoomNextBtn.style.display = showArrows ? 'block' : 'none';
+
+            const updateZoomedImage = (idx) => {
+              currentZoomIndex = idx;
+              const imgName = images[idx];
+              let caption = imgName.replace(/_/g, ' ').replace(/\.[^/.]+$/, "");
+              caption = caption.charAt(0).toUpperCase() + caption.slice(1);
+              zoomedImg.src = `images/${imgName}`;
+              zoomCap.textContent = caption;
+            };
+
+            const galleryItems = photoGallery.querySelectorAll('.gallery-item');
+            galleryItems.forEach((gItem, idx) => {
+              gItem.style.cursor = 'zoom-in';
+              gItem.addEventListener('click', () => {
+                if (zoomModal && zoomedImg && zoomCap) {
+                  updateZoomedImage(idx);
+                  zoomModal.style.display = 'flex';
+                  setTimeout(() => {
+                    zoomModal.classList.add('show');
+                  }, 10);
+                }
+              });
+            });
+
+            // Zoom modal next / prev functions
+            const navigateZoom = (direction) => {
+              let newIdx = currentZoomIndex + direction;
+              if (newIdx < 0) newIdx = images.length - 1;
+              if (newIdx >= images.length) newIdx = 0;
+              updateZoomedImage(newIdx);
+            };
+
+            if (zoomPrevBtn) {
+              zoomPrevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateZoom(-1);
+              });
+            }
+
+            if (zoomNextBtn) {
+              zoomNextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                navigateZoom(1);
+              });
+            }
+
+            // Carousel scroll buttons implementation
+            if (galleryPrevBtn) {
+              galleryPrevBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const itemWidth = photoGallery.clientWidth;
+                photoGallery.scrollBy({ left: -itemWidth, behavior: 'smooth' });
+              });
+            }
+
+            if (galleryNextBtn) {
+              galleryNextBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const itemWidth = photoGallery.clientWidth;
+                photoGallery.scrollBy({ left: itemWidth, behavior: 'smooth' });
+              });
+            }
+
+            if (zoomModal && closeZoomBtn) {
+              const closeZoom = () => {
+                zoomModal.classList.remove('show');
+                setTimeout(() => {
+                  zoomModal.style.display = 'none';
+                }, 300);
+              };
+              
+              closeZoomBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeZoom();
+              });
+
+              zoomModal.addEventListener('click', (e) => {
+                if (e.target === zoomModal || e.target.classList.contains('zoom-modal-content')) {
+                  closeZoom();
+                }
+              });
+
+              window.addEventListener('keydown', (e) => {
+                if (!zoomModal.classList.contains('show')) return;
+                if (e.key === 'Escape') {
+                  closeZoom();
+                } else if (e.key === 'ArrowLeft') {
+                  navigateZoom(-1);
+                } else if (e.key === 'ArrowRight') {
+                  navigateZoom(1);
+                }
+              });
+            }
           } else {
             photoGallery.innerHTML = '<p style="color:var(--text-muted); font-size: 0.85rem; text-align:center; padding:2rem; width:100%;">No highlight photos uploaded yet.</p>';
           }

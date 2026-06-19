@@ -173,6 +173,10 @@ const QuizSubmission = require('./models/QuizSubmission');
 const PenaltyScore = require('./models/PenaltyScore');
 const JugglingScore = require('./models/JugglingScore');
 const SoccerScore = require('./models/SoccerScore');
+const PenaltyAttempt = require('./models/PenaltyAttempt');
+const JugglingAttempt = require('./models/JugglingAttempt');
+const SoccerAttempt = require('./models/SoccerAttempt');
+const DailyScore = require('./models/DailyScore');
 const questionsPool = require('./data/questionsPool');
 
 // Data will be fetched from MongoDB via Mongoose models.
@@ -417,6 +421,7 @@ app.post('/api/quiz/submit', async (req, res) => {
     });
 
     await submission.save();
+    await recomputeDailyScore(username, dateStr);
     return res.json({ success: true, points, score: submission.score, timeTaken: submission.timeTaken });
   } catch (err) {
     console.error(err);
@@ -687,15 +692,120 @@ app.get('/api/leaderboard', async (req, res) => {
   }
 });
 
+function getTodayDateStr() {
+  const today = new Date();
+  return today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+}
+
+async function recomputeDailyScore(username, dateStr) {
+  try {
+    const trimmedUsername = username.trim();
+
+    // 1. Quiz Norm
+    const quizSub = await QuizSubmission.findOne({ username: trimmedUsername, dateStr });
+    const quizRaw = quizSub ? quizSub.points : 0;
+    const quizNorm = Math.min(quizRaw, 300) / 300 * 100;
+
+    // 2. Juggling Norm
+    const jugglingAttempts = await JugglingAttempt.find({ username: trimmedUsername, dateStr });
+    let jugglingNorm = 0;
+    if (jugglingAttempts.length > 0) {
+      let maxJugglingRaw = 0;
+      for (const attempt of jugglingAttempts) {
+        const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
+        const raw = attempt.score * mult;
+        if (raw > maxJugglingRaw) {
+          maxJugglingRaw = raw;
+        }
+      }
+      jugglingNorm = Math.min(maxJugglingRaw, 3000) / 3000 * 100;
+    }
+
+    // 3. Penalty Norm
+    const penaltyAttempts = await PenaltyAttempt.find({ username: trimmedUsername, dateStr, winStatus: true });
+    let penaltyNorm = 0;
+    if (penaltyAttempts.length > 0) {
+      let maxPenaltyRaw = 0;
+      for (const attempt of penaltyAttempts) {
+        const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
+        const rawPoints = (attempt.goals * 20) + Math.max(0, Math.round((50 - attempt.timeTaken) * 2));
+        const raw = Math.min(rawPoints, 120) * mult;
+        if (raw > maxPenaltyRaw) {
+          maxPenaltyRaw = raw;
+        }
+      }
+      penaltyNorm = Math.min(maxPenaltyRaw, 120) / 120 * 100;
+    }
+
+    // 4. Soccer Norm
+    const soccerAttempts = await SoccerAttempt.find({ username: trimmedUsername, dateStr });
+    let soccerNorm = 0;
+    if (soccerAttempts.length > 0) {
+      let maxSoccerRaw = 0;
+      for (const attempt of soccerAttempts) {
+        const diff = attempt.userGoals - attempt.aiGoals;
+        if (diff > 0) {
+          const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
+          const rawPoints = (diff * 20) + 50;
+          const raw = Math.min(rawPoints, 100) * mult;
+          if (raw > maxSoccerRaw) {
+            maxSoccerRaw = raw;
+          }
+        }
+      }
+      soccerNorm = Math.min(maxSoccerRaw, 100) / 100 * 100;
+    }
+
+    const dailyTotal = (quizNorm * 0.40) + (jugglingNorm * 0.25) + (penaltyNorm * 0.25) + (soccerNorm * 0.10);
+
+    await DailyScore.findOneAndUpdate(
+      { username: trimmedUsername, dateStr },
+      {
+        quizNorm,
+        jugglingNorm,
+        penaltyNorm,
+        soccerNorm,
+        dailyTotal,
+        updatedAt: new Date()
+      },
+      { upsert: true, returnDocument: 'after' }
+    );
+  } catch (err) {
+    console.error(`Error in recomputeDailyScore for user ${username} on date ${dateStr}:`, err);
+  }
+}
+
 // --- PENALTY SHOOTOUT ENDPOINTS ---
 
 // Get current global top score (highest goals, then lowest time)
 app.get('/api/penalty/top', async (req, res) => {
   try {
-    const topScore = await PenaltyScore.findOne()
-      .sort({ goals: -1, timeTaken: 1 })
-      .exec();
-    res.json({ success: true, topScore });
+    const topScores = await PenaltyAttempt.aggregate([
+      { $match: { winStatus: true } },
+      { $sort: { goals: -1, timeTaken: 1 } },
+      {
+        $group: {
+          _id: "$username",
+          goals: { $first: "$goals" },
+          timeTaken: { $first: "$timeTaken" },
+          difficulty: { $first: "$difficulty" },
+          createdAt: { $first: "$createdAt" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          username: "$_id",
+          goals: 1,
+          timeTaken: 1,
+          difficulty: 1,
+          createdAt: 1
+        }
+      },
+      { $sort: { goals: -1, timeTaken: 1 } },
+      { $limit: 1 }
+    ]);
+    res.json({ success: true, topScore: topScores[0] || null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Failed to fetch top score" });
@@ -726,14 +836,12 @@ app.post('/api/penalty/submit', async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
     }
 
-    const todayStr = new Date().toDateString();
-    let record = await PenaltyScore.findOne({ username: username.trim() });
+    const todayStr = getTodayDateStr();
+    const attemptsCount = await PenaltyAttempt.countDocuments({ username: username.trim(), dateStr: todayStr });
 
     if (sessionUser.role !== 'admin') {
-      if (record && record.lastPlayedDate === todayStr) {
-        if (record.attemptsToday >= 5) {
-          return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 5 attempts today!" });
-        }
+      if (attemptsCount >= 5) {
+        return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 5 attempts today!" });
       }
     }
 
@@ -744,52 +852,46 @@ app.post('/api/penalty/submit', async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid score or time. Goals must be between 0 and 5." });
     }
 
-    // Determine attempts
-    let attempts = 1;
-    if (record) {
-      if (record.lastPlayedDate === todayStr) {
-        attempts = record.attemptsToday + 1;
-      } else {
-        attempts = 1;
+    const currentAttemptNo = attemptsCount + 1;
+    const winStatus = goalsScored >= 3;
+
+    const newAttempt = new PenaltyAttempt({
+      username: username.trim(),
+      dateStr: todayStr,
+      attemptNo: currentAttemptNo,
+      goals: goalsScored,
+      timeTaken: secondsTaken,
+      difficulty: difficulty || 'medium',
+      winStatus,
+      createdAt: new Date()
+    });
+
+    await newAttempt.save();
+    await recomputeDailyScore(username, todayStr);
+
+    // Find today's best attempt to return in response
+    const todayAttempts = await PenaltyAttempt.find({ username: username.trim(), dateStr: todayStr });
+    let bestAttempt = null;
+    for (const att of todayAttempts) {
+      if (!bestAttempt) {
+        bestAttempt = att;
+      } else if (att.goals > bestAttempt.goals) {
+        bestAttempt = att;
+      } else if (att.goals === bestAttempt.goals && att.timeTaken < bestAttempt.timeTaken) {
+        bestAttempt = att;
       }
     }
 
-    // Helper to calculate penalty points
-    const getPenaltyPointsLocal = (g, t, diffL) => {
-      if (g < 3) return 0;
-      const mult = diffL === 'hard' ? 2.0 : (diffL === 'easy' ? 1.0 : 1.5);
-      const rawPoints = (g * 20) + Math.max(0, Math.round((50 - t) * 2));
-      const capped = Math.min(rawPoints, 120);
-      return Math.round(capped * mult * 0.6);
-    };
+    // Determine attempts left
+    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 5 - currentAttemptNo);
 
-    const newPoints = getPenaltyPointsLocal(goalsScored, secondsTaken, difficulty || 'medium');
-    const oldPoints = record ? getPenaltyPointsLocal(record.goals, record.timeTaken, record.difficulty) : -1;
-
-    let isNewHighScore = false;
-    let finalRecord;
-
-    if (!record || newPoints > oldPoints) {
-      isNewHighScore = record ? true : false;
-      finalRecord = await PenaltyScore.findOneAndUpdate(
-        { username: username.trim() },
-        {
-          goals: goalsScored,
-          timeTaken: secondsTaken,
-          difficulty: difficulty || 'medium',
-          attemptsToday: attempts,
-          lastPlayedDate: todayStr,
-          createdAt: new Date()
-        },
-        { upsert: true, new: true }
-      );
-    } else {
-      record.attemptsToday = attempts;
-      record.lastPlayedDate = todayStr;
-      finalRecord = await record.save();
-    }
-
-    return res.json({ success: true, message: "Score submitted successfully!", isNewHighScore, topScore: finalRecord });
+    return res.json({
+      success: true,
+      message: "Score submitted successfully!",
+      attemptNo: currentAttemptNo,
+      attemptsLeft,
+      topScore: bestAttempt
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error saving penalty score" });
@@ -801,10 +903,32 @@ app.post('/api/penalty/submit', async (req, res) => {
 // Get current global top score and top 10 leaderboard entries
 app.get('/api/juggling/top', async (req, res) => {
   try {
-    const topScores = await JugglingScore.find()
-      .sort({ score: -1, timeSurvived: 1, maxCombo: -1 })
-      .limit(10)
-      .exec();
+    const topScores = await JugglingAttempt.aggregate([
+      { $sort: { score: -1, timeSurvived: 1, maxCombo: -1 } },
+      {
+        $group: {
+          _id: "$username",
+          score: { $first: "$score" },
+          maxCombo: { $first: "$maxCombo" },
+          timeSurvived: { $first: "$timeSurvived" },
+          difficulty: { $first: "$difficulty" },
+          createdAt: { $first: "$createdAt" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          username: "$_id",
+          score: 1,
+          maxCombo: 1,
+          timeSurvived: 1,
+          difficulty: 1,
+          createdAt: 1
+        }
+      },
+      { $sort: { score: -1, timeSurvived: 1, maxCombo: -1 } },
+      { $limit: 10 }
+    ]);
     res.json({ success: true, topScore: topScores[0] || null, topScores });
   } catch (err) {
     console.error(err);
@@ -836,14 +960,12 @@ app.post('/api/juggling/submit', async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
     }
 
-    const todayStr = new Date().toDateString();
-    let record = await JugglingScore.findOne({ username: username.trim() });
+    const todayStr = getTodayDateStr();
+    const attemptsCount = await JugglingAttempt.countDocuments({ username: username.trim(), dateStr: todayStr });
 
     if (sessionUser.role !== 'admin') {
-      if (record && record.lastPlayedDate === todayStr) {
-        if (record.attemptsToday >= 5) {
-          return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 5 attempts today!" });
-        }
+      if (attemptsCount >= 5) {
+        return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 5 attempts today!" });
       }
     }
 
@@ -855,51 +977,47 @@ app.post('/api/juggling/submit', async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid score, combo, or time." });
     }
 
-    // Determine attempts
-    let attempts = 1;
-    if (record) {
-      if (record.lastPlayedDate === todayStr) {
-        attempts = record.attemptsToday + 1;
-      } else {
-        attempts = 1;
+    const currentAttemptNo = attemptsCount + 1;
+
+    const newAttempt = new JugglingAttempt({
+      username: username.trim(),
+      dateStr: todayStr,
+      attemptNo: currentAttemptNo,
+      score: finalScore,
+      maxCombo: finalCombo,
+      timeSurvived: secondsSurvived,
+      difficulty: difficulty || 'medium',
+      createdAt: new Date()
+    });
+
+    await newAttempt.save();
+    await recomputeDailyScore(username, todayStr);
+
+    // Find today's best attempt to return in response
+    const todayAttempts = await JugglingAttempt.find({ username: username.trim(), dateStr: todayStr });
+    let bestAttempt = null;
+    for (const att of todayAttempts) {
+      if (!bestAttempt) {
+        bestAttempt = att;
+      } else if (att.score > bestAttempt.score) {
+        bestAttempt = att;
+      } else if (att.score === bestAttempt.score && att.timeSurvived < bestAttempt.timeSurvived) {
+        bestAttempt = att;
+      } else if (att.score === bestAttempt.score && att.timeSurvived === bestAttempt.timeSurvived && att.maxCombo > bestAttempt.maxCombo) {
+        bestAttempt = att;
       }
     }
 
-    // Helper to calculate juggling points
-    const getJugglingPointsLocal = (s, diffL) => {
-      const mult = diffL === 'hard' ? 2.0 : (diffL === 'easy' ? 1.0 : 1.5);
-      const capped = Math.min(s, 150);
-      return Math.round(capped * mult * 0.8);
-    };
+    // Determine attempts left
+    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 5 - currentAttemptNo);
 
-    const newPoints = getJugglingPointsLocal(finalScore, difficulty || 'medium');
-    const oldPoints = record ? getJugglingPointsLocal(record.score, record.difficulty) : -1;
-
-    let isNewHighScore = false;
-    let finalRecord;
-
-    if (!record || newPoints > oldPoints) {
-      isNewHighScore = record ? true : false;
-      finalRecord = await JugglingScore.findOneAndUpdate(
-        { username: username.trim() },
-        {
-          score: finalScore,
-          maxCombo: finalCombo,
-          timeSurvived: secondsSurvived,
-          difficulty: difficulty || 'medium',
-          attemptsToday: attempts,
-          lastPlayedDate: todayStr,
-          createdAt: new Date()
-        },
-        { upsert: true, new: true }
-      );
-    } else {
-      record.attemptsToday = attempts;
-      record.lastPlayedDate = todayStr;
-      finalRecord = await record.save();
-    }
-
-    return res.json({ success: true, message: "Score submitted successfully!", isNewHighScore, topScore: finalRecord });
+    return res.json({
+      success: true,
+      message: "Score submitted successfully!",
+      attemptNo: currentAttemptNo,
+      attemptsLeft,
+      topScore: bestAttempt
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error saving juggling score" });
@@ -911,18 +1029,31 @@ app.post('/api/juggling/submit', async (req, res) => {
 // Get current global top score and top 10 leaderboard entries
 app.get('/api/soccer/top', async (req, res) => {
   try {
-    const topScores = await SoccerScore.aggregate([
+    const topScores = await SoccerAttempt.aggregate([
+      { $sort: { goalDifference: -1, userGoals: -1, createdAt: 1 } },
       {
-        $addFields: {
-          goalDiff: { $subtract: ["$playerScore", "$aiScore"] }
+        $group: {
+          _id: "$username",
+          playerScore: { $first: "$userGoals" },
+          aiScore: { $first: "$aiGoals" },
+          goalDifference: { $first: "$goalDifference" },
+          difficulty: { $first: "$difficulty" },
+          createdAt: { $first: "$createdAt" }
         }
       },
       {
-        $sort: { goalDiff: -1, playerScore: -1, createdAt: 1 }
+        $project: {
+          _id: 0,
+          username: "$_id",
+          playerScore: 1,
+          aiScore: 1,
+          goalDifference: 1,
+          difficulty: 1,
+          createdAt: 1
+        }
       },
-      {
-        $limit: 10
-      }
+      { $sort: { goalDifference: -1, playerScore: -1, createdAt: 1 } },
+      { $limit: 10 }
     ]);
 
     res.json({ success: true, topScore: topScores[0] || null, topScores });
@@ -956,14 +1087,12 @@ app.post('/api/soccer/submit', async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: Invalid or expired session" });
     }
 
-    const todayStr = new Date().toDateString();
-    let record = await SoccerScore.findOne({ username: username.trim() });
+    const todayStr = getTodayDateStr();
+    const attemptsCount = await SoccerAttempt.countDocuments({ username: username.trim(), dateStr: todayStr });
 
     if (sessionUser.role !== 'admin') {
-      if (record && record.lastPlayedDate === todayStr) {
-        if (record.attemptsToday >= 3) {
-          return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 3 attempts today!" });
-        }
+      if (attemptsCount >= 3) {
+        return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 3 attempts today!" });
       }
     }
 
@@ -974,53 +1103,56 @@ app.post('/api/soccer/submit', async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid score details." });
     }
 
-    // Determine attempts
-    let attempts = 1;
-    if (record) {
-      if (record.lastPlayedDate === todayStr) {
-        attempts = record.attemptsToday + 1;
-      } else {
-        attempts = 1;
+    const currentAttemptNo = attemptsCount + 1;
+    const goalDifference = Math.max(0, pScore - aScore);
+
+    const newAttempt = new SoccerAttempt({
+      username: username.trim(),
+      dateStr: todayStr,
+      attemptNo: currentAttemptNo,
+      userGoals: pScore,
+      aiGoals: aScore,
+      goalDifference,
+      difficulty: difficulty || 'medium',
+      createdAt: new Date()
+    });
+
+    await newAttempt.save();
+    await recomputeDailyScore(username, todayStr);
+
+    // Find today's best attempt to return in response
+    const todayAttempts = await SoccerAttempt.find({ username: username.trim(), dateStr: todayStr });
+    let bestAttempt = null;
+    for (const att of todayAttempts) {
+      if (!bestAttempt) {
+        bestAttempt = att;
+      } else if (att.goalDifference > bestAttempt.goalDifference) {
+        bestAttempt = att;
+      } else if (att.goalDifference === bestAttempt.goalDifference && att.userGoals > bestAttempt.userGoals) {
+        bestAttempt = att;
       }
     }
 
-    // Helper to calculate soccer points
-    const getSoccerPointsLocal = (ps, as, diffL) => {
-      const diff = ps - as;
-      if (diff <= 0) return 0;
-      const mult = diffL === 'hard' ? 2.0 : (diffL === 'easy' ? 1.0 : 1.5);
-      const rawPoints = (diff * 20) + 50;
-      const capped = Math.min(rawPoints, 100);
-      return Math.round(capped * mult * 0.4);
-    };
+    // Determine attempts left
+    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 3 - currentAttemptNo);
 
-    const newPoints = getSoccerPointsLocal(pScore, aScore, difficulty || 'medium');
-    const oldPoints = record ? getSoccerPointsLocal(record.playerScore, record.aiScore, record.difficulty) : -1;
+    // Map bestAttempt to old fields for compatibility
+    const formattedBestAttempt = bestAttempt ? {
+      playerScore: bestAttempt.userGoals,
+      aiScore: bestAttempt.aiGoals,
+      difficulty: bestAttempt.difficulty,
+      attemptsToday: currentAttemptNo,
+      lastPlayedDate: todayStr,
+      createdAt: bestAttempt.createdAt
+    } : null;
 
-    let isNewHighScore = false;
-    let finalRecord;
-
-    if (!record || newPoints > oldPoints) {
-      isNewHighScore = record ? true : false;
-      finalRecord = await SoccerScore.findOneAndUpdate(
-        { username: username.trim() },
-        {
-          playerScore: pScore,
-          aiScore: aScore,
-          difficulty: difficulty || 'medium',
-          attemptsToday: attempts,
-          lastPlayedDate: todayStr,
-          createdAt: new Date()
-        },
-        { upsert: true, new: true }
-      );
-    } else {
-      record.attemptsToday = attempts;
-      record.lastPlayedDate = todayStr;
-      finalRecord = await record.save();
-    }
-
-    return res.json({ success: true, message: "Score submitted successfully!", isNewHighScore, topScore: finalRecord });
+    return res.json({
+      success: true,
+      message: "Score submitted successfully!",
+      attemptNo: currentAttemptNo,
+      attemptsLeft,
+      topScore: formattedBestAttempt
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ success: false, message: "Server error saving soccer score" });
@@ -1068,28 +1200,35 @@ app.get('/api/games/status', async (req, res) => {
     }
 
     const username = sessionUser.username.trim();
-    const todayStr = new Date().toDateString();
+    const dateStr = getTodayDateStr();
 
     // 1. Daily Quiz Status
-    const today = new Date();
-    const dateStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
     const quizCount = await QuizSubmission.countDocuments({ username, dateStr });
     const quizCompletedToday = quizCount > 0;
 
     // 2. Penalty attempts and best raw score
-    const penaltyRecord = await PenaltyScore.findOne({ username });
-    const penaltyAttempts = (penaltyRecord && penaltyRecord.lastPlayedDate === todayStr) ? penaltyRecord.attemptsToday : 0;
-    const bestPenaltyScore = penaltyRecord ? penaltyRecord.goals : 0;
+    const penaltyAttempts = await PenaltyAttempt.countDocuments({ username, dateStr });
+    const penaltyAttemptsDocs = await PenaltyAttempt.find({ username, dateStr, winStatus: true });
+    let bestPenaltyScore = 0;
+    if (penaltyAttemptsDocs.length > 0) {
+      bestPenaltyScore = Math.max(...penaltyAttemptsDocs.map(a => a.goals));
+    }
 
     // 3. Juggling attempts and best raw score
-    const jugglingRecord = await JugglingScore.findOne({ username });
-    const jugglingAttempts = (jugglingRecord && jugglingRecord.lastPlayedDate === todayStr) ? jugglingRecord.attemptsToday : 0;
-    const bestJugglingScore = jugglingRecord ? jugglingRecord.score : 0;
+    const jugglingAttempts = await JugglingAttempt.countDocuments({ username, dateStr });
+    const jugglingAttemptsDocs = await JugglingAttempt.find({ username, dateStr });
+    let bestJugglingScore = 0;
+    if (jugglingAttemptsDocs.length > 0) {
+      bestJugglingScore = Math.max(...jugglingAttemptsDocs.map(a => a.score));
+    }
 
     // 4. Soccer attempts and best raw score
-    const soccerRecord = await SoccerScore.findOne({ username });
-    const soccerAttempts = (soccerRecord && soccerRecord.lastPlayedDate === todayStr) ? soccerRecord.attemptsToday : 0;
-    const bestSoccerScore = soccerRecord ? soccerRecord.playerScore : 0;
+    const soccerAttempts = await SoccerAttempt.countDocuments({ username, dateStr });
+    const soccerAttemptsDocs = await SoccerAttempt.find({ username, dateStr });
+    let bestSoccerScore = 0;
+    if (soccerAttemptsDocs.length > 0) {
+      bestSoccerScore = Math.max(...soccerAttemptsDocs.map(a => a.userGoals));
+    }
 
     return res.json({
       success: true,
@@ -1127,124 +1266,73 @@ app.get('/api/games/status', async (req, res) => {
 app.get('/api/games/overall-leaderboard', async (req, res) => {
   try {
     const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
-    
-    // Fetch all submissions in parallel
-    const [quizSubmissions, penaltyScores, jugglingScores, soccerScores] = await Promise.all([
-      QuizSubmission.find({}),
-      PenaltyScore.find({}),
-      JugglingScore.find({}),
-      SoccerScore.find({})
+    const userNames = users.map(u => u.username.trim());
+
+    // Aggregate DailyScore grouping by username
+    const dailyScores = await DailyScore.aggregate([
+      { $match: { username: { $in: userNames } } },
+      {
+        $group: {
+          _id: "$username",
+          championshipScore: { $sum: "$dailyTotal" },
+          quizSum: { $sum: "$quizNorm" },
+          jugglingSum: { $sum: "$jugglingNorm" },
+          penaltySum: { $sum: "$penaltyNorm" },
+          soccerSum: { $sum: "$soccerNorm" },
+          daysPlayed: { $sum: 1 }
+        }
+      }
     ]);
 
-    // Group submissions by username
-    const quizMap = {}; // username -> sum of points
-    quizSubmissions.forEach(q => {
-      const u = q.username.trim();
-      quizMap[u] = (quizMap[u] || 0) + q.points;
+    // Create a lookup map
+    const scoreMap = {};
+    dailyScores.forEach(item => {
+      scoreMap[item._id] = item;
     });
 
-    // Helper to calculate scaled penalty points (Priority 3, Weight 0.6, Capped raw 120)
-    const getPenaltyPoints = (p) => {
-      if (p.goals < 3) return 0;
-      const difficulty = p.difficulty || 'medium';
-      const multiplier = difficulty === 'hard' ? 2.0 : (difficulty === 'easy' ? 1.0 : 1.5);
-      const rawPoints = (p.goals * 20) + Math.max(0, Math.round((50 - p.timeTaken) * 2));
-      const cappedPoints = Math.min(rawPoints, 120);
-      return Math.round(cappedPoints * multiplier * 0.6);
-    };
-
-    const penaltyMap = {}; // username -> best penalty record
-    penaltyScores.forEach(p => {
-      const u = p.username.trim();
-      const existing = penaltyMap[u];
-      if (!existing || getPenaltyPoints(p) > getPenaltyPoints(existing)) {
-        penaltyMap[u] = p;
-      }
-    });
-
-    // Helper to calculate scaled juggling points (Priority 2, Weight 0.8, Capped raw 150)
-    const getJugglingPoints = (j) => {
-      const difficulty = j.difficulty || 'medium';
-      const multiplier = difficulty === 'hard' ? 2.0 : (difficulty === 'easy' ? 1.0 : 1.5);
-      const cappedScore = Math.min(j.score, 150);
-      const rawPoints = cappedScore;
-      return Math.round(rawPoints * multiplier * 0.8);
-    };
-
-    const jugglingMap = {}; // username -> best juggling record
-    jugglingScores.forEach(j => {
-      const u = j.username.trim();
-      const existing = jugglingMap[u];
-      if (!existing || getJugglingPoints(j) > getJugglingPoints(existing)) {
-        jugglingMap[u] = j;
-      }
-    });
-
-    // Helper to calculate scaled soccer points (Priority 4, Weight 0.4, Capped raw 100)
-    const getSoccerPoints = (s) => {
-      const diff = s.playerScore - s.aiScore;
-      if (diff <= 0) return 0;
-      const difficulty = s.difficulty || 'medium';
-      const multiplier = difficulty === 'hard' ? 2.0 : (difficulty === 'easy' ? 1.0 : 1.5);
-      const rawPoints = (diff * 20) + 50;
-      const cappedPoints = Math.min(rawPoints, 100);
-      return Math.round(cappedPoints * multiplier * 0.4);
-    };
-
-    const soccerMap = {}; // username -> best soccer record
-    soccerScores.forEach(s => {
-      const u = s.username.trim();
-      const existing = soccerMap[u];
-      if (!existing || getSoccerPoints(s) > getSoccerPoints(existing)) {
-        soccerMap[u] = s;
-      }
-    });
-
-    // Compile leaderboard entries
+    // Compile entries for all users
     const entries = users.map(user => {
       const username = user.username.trim();
-
-      // 1. Quiz points (summed)
-      const quizPoints = quizMap[username] || 0;
-
-      // 2. Penalty points (best game)
-      let penaltyPoints = 0;
-      const bestPenalty = penaltyMap[username];
-      if (bestPenalty) {
-        penaltyPoints = getPenaltyPoints(bestPenalty);
-      }
-
-      // 3. Juggling points (best game)
-      let jugglingPoints = 0;
-      const bestJuggling = jugglingMap[username];
-      if (bestJuggling) {
-        jugglingPoints = getJugglingPoints(bestJuggling);
-      }
-
-      // 4. Soccer points (best game)
-      let soccerPoints = 0;
-      const bestSoccer = soccerMap[username];
-      if (bestSoccer) {
-        soccerPoints = getSoccerPoints(bestSoccer);
-      }
-
-      const overallPoints = quizPoints + penaltyPoints + jugglingPoints + soccerPoints;
+      const scoreData = scoreMap[username] || {
+        championshipScore: 0,
+        quizSum: 0,
+        jugglingSum: 0,
+        penaltySum: 0,
+        soccerSum: 0,
+        daysPlayed: 0
+      };
 
       return {
         username,
         avatar: username.charAt(0).toUpperCase(),
-        quizPoints,
-        penaltyPoints,
-        jugglingPoints,
-        soccerPoints,
-        overallPoints
+        championshipScore: parseFloat(scoreData.championshipScore.toFixed(2)),
+        daysPlayed: scoreData.daysPlayed,
+        quizSum: parseFloat(scoreData.quizSum.toFixed(2)),
+        jugglingSum: parseFloat(scoreData.jugglingSum.toFixed(2)),
+        penaltySum: parseFloat(scoreData.penaltySum.toFixed(2)),
+        soccerSum: parseFloat(scoreData.soccerSum.toFixed(2)),
+        // Compatibility fields for existing frontend bindings
+        overallPoints: parseFloat(scoreData.championshipScore.toFixed(2)),
+        quizPoints: parseFloat((scoreData.quizSum * 0.40).toFixed(2)),
+        jugglingPoints: parseFloat((scoreData.jugglingSum * 0.25).toFixed(2)),
+        penaltyPoints: parseFloat((scoreData.penaltySum * 0.25).toFixed(2)),
+        soccerPoints: parseFloat((scoreData.soccerSum * 0.10).toFixed(2))
       };
     });
 
-    // Sort by overall points desc, then username asc
+    // Sort: championshipScore desc, quizSum desc, jugglingSum desc, penaltySum desc, username asc
     entries.sort((a, b) => {
-      if (b.overallPoints !== a.overallPoints) {
-        return b.overallPoints - a.overallPoints;
+      if (b.championshipScore !== a.championshipScore) {
+        return b.championshipScore - a.championshipScore;
+      }
+      if (b.quizSum !== a.quizSum) {
+        return b.quizSum - a.quizSum;
+      }
+      if (b.jugglingSum !== a.jugglingSum) {
+        return b.jugglingSum - a.jugglingSum;
+      }
+      if (b.penaltySum !== a.penaltySum) {
+        return b.penaltySum - a.penaltySum;
       }
       return a.username.localeCompare(b.username);
     });
@@ -1256,8 +1344,70 @@ app.get('/api/games/overall-leaderboard', async (req, res) => {
 
     res.json({ success: true, leaderboard: entries });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Failed to generate overall champions board" });
+    console.error("Error generating overall leaderboard:", err);
+    res.status(500).json({ success: false, message: "Failed to generate overall championship board" });
+  }
+});
+
+app.get('/api/games/daily-leaderboard', async (req, res) => {
+  const { date } = req.query;
+  if (!date) {
+    return res.status(400).json({ success: false, message: "Date parameter is required (format: YYYY-M-D)" });
+  }
+
+  try {
+    const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
+    const userNames = users.map(u => u.username.trim());
+
+    const scores = await DailyScore.find({ dateStr: date, username: { $in: userNames } })
+      .sort({ dailyTotal: -1, quizNorm: -1, jugglingNorm: -1, penaltyNorm: -1, username: 1 })
+      .exec();
+
+    // Map existing scores to lookup map
+    const scoreMap = {};
+    scores.forEach(item => {
+      scoreMap[item.username] = item;
+    });
+
+    const leaderboard = users.map(user => {
+      const username = user.username.trim();
+      const scoreData = scoreMap[username] || {
+        dailyTotal: 0,
+        quizNorm: 0,
+        jugglingNorm: 0,
+        penaltyNorm: 0,
+        soccerNorm: 0
+      };
+
+      return {
+        username,
+        avatar: username.charAt(0).toUpperCase(),
+        dailyTotal: parseFloat(scoreData.dailyTotal.toFixed(2)),
+        quizNorm: parseFloat(scoreData.quizNorm.toFixed(2)),
+        jugglingNorm: parseFloat(scoreData.jugglingNorm.toFixed(2)),
+        penaltyNorm: parseFloat(scoreData.penaltyNorm.toFixed(2)),
+        soccerNorm: parseFloat(scoreData.soccerNorm.toFixed(2))
+      };
+    });
+
+    // Sort: dailyTotal desc, quizNorm desc, jugglingNorm desc, penaltyNorm desc, username asc
+    leaderboard.sort((a, b) => {
+      if (b.dailyTotal !== a.dailyTotal) return b.dailyTotal - a.dailyTotal;
+      if (b.quizNorm !== a.quizNorm) return b.quizNorm - a.quizNorm;
+      if (b.jugglingNorm !== a.jugglingNorm) return b.jugglingNorm - a.jugglingNorm;
+      if (b.penaltyNorm !== a.penaltyNorm) return b.penaltyNorm - a.penaltyNorm;
+      return a.username.localeCompare(b.username);
+    });
+
+    // Add rank
+    leaderboard.forEach((e, idx) => {
+      e.rank = idx + 1;
+    });
+
+    res.json({ success: true, leaderboard });
+  } catch (err) {
+    console.error("Error fetching daily leaderboard:", err);
+    res.status(500).json({ success: false, message: "Failed to fetch daily leaderboard" });
   }
 });
 
@@ -1570,6 +1720,36 @@ app.post('/api/admin/users/delete', async (req, res) => {
   } catch (err) {
     console.error('Error deleting user:', err);
     return res.status(500).json({ success: false, message: "Server error deleting user" });
+  }
+});
+
+// Admin Games Management - Reset all 4 games scores to 0
+app.post('/api/admin/reset-games', async (req, res) => {
+  const { username, token } = req.body;
+  if (!username || !token) {
+    return res.status(400).json({ success: false, message: "Username and token are required" });
+  }
+
+  try {
+    // Validate admin role
+    const adminUser = await User.findOne({ username: username.trim(), role: 'admin', sessionToken: token });
+    if (!adminUser) {
+      return res.status(403).json({ success: false, message: "Forbidden: Admin role and valid session required" });
+    }
+
+    // Delete all submissions & attempts
+    await Promise.all([
+      QuizSubmission.deleteMany({}),
+      JugglingAttempt.deleteMany({}),
+      PenaltyAttempt.deleteMany({}),
+      SoccerAttempt.deleteMany({}),
+      DailyScore.deleteMany({})
+    ]);
+
+    return res.json({ success: true, message: "All 4 games have been successfully reset to 0 for all users!" });
+  } catch (err) {
+    console.error("Error resetting games data:", err);
+    return res.status(500).json({ success: false, message: "Server error resetting games data" });
   }
 });
 

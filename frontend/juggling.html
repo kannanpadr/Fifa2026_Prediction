@@ -936,7 +936,7 @@
       // Update UI elements
       document.getElementById('scoreVal').textContent = '0';
       document.getElementById('comboVal').textContent = 'x1';
-      document.getElementById('timerVal').textContent = '0.0s';
+      document.getElementById('timerVal').textContent = '60.0s';
       document.getElementById('windVal').textContent = 'Calm';
       
       const hearts = document.querySelectorAll('.life-heart');
@@ -947,9 +947,12 @@
       // Start timer
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
-        if (!ball.isDead) {
-          timeSurvived = (Date.now() - startTime) / 1000;
-          document.getElementById('timerVal').textContent = timeSurvived.toFixed(1) + 's';
+        const elapsed = (Date.now() - startTime) / 1000;
+        const timeLeft = Math.max(0, 60 - elapsed);
+        document.getElementById('timerVal').textContent = timeLeft.toFixed(1) + 's';
+        
+        if (timeLeft <= 0) {
+          endGame();
         }
       }, 100);
 
@@ -962,12 +965,23 @@
       if (timerInterval) clearInterval(timerInterval);
       playSound('gameover');
 
+      const elapsed = (Date.now() - startTime) / 1000;
+      timeSurvived = Math.min(60.00, elapsed);
+
+      const isTimeUp = timeSurvived >= 60.0;
+
       // Setup Modal text
-      document.getElementById('modalTitle').textContent = 'GAME OVER';
-      document.getElementById('modalTitle').style.color = '#ef5350';
-      document.getElementById('modalSubtitle').textContent = score >= 50 
-        ? 'Amazing juggling skills! You are an elite competitor!' 
-        : 'Good effort! Keep practicing to secure your place on the leaderboard.';
+      if (isTimeUp) {
+        document.getElementById('modalTitle').textContent = 'TIME UP!';
+        document.getElementById('modalTitle').style.color = '#ffd700';
+        document.getElementById('modalSubtitle').textContent = 'Outstanding! You survived the full 1-minute challenge!';
+      } else {
+        document.getElementById('modalTitle').textContent = 'GAME OVER';
+        document.getElementById('modalTitle').style.color = '#ef5350';
+        document.getElementById('modalSubtitle').textContent = score >= 50 
+          ? 'Amazing juggling skills! You are an elite competitor!' 
+          : 'Good effort! Keep practicing to secure your place on the leaderboard.';
+      }
       
       document.getElementById('finalScoreText').textContent = score;
       document.getElementById('finalComboText').textContent = combo > maxCombo ? combo : maxCombo;

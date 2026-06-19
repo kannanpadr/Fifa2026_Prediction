@@ -94,6 +94,51 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// --- GLOBAL CUSTOM CONFIRMATION SYSTEM ---
+window.showConfirm = function (title, message, isDanger = true) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const titleEl = document.getElementById('confirmTitle');
+    const messageEl = document.getElementById('confirmMessage');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    const proceedBtn = document.getElementById('confirmProceedBtn');
+
+    if (!modal || !titleEl || !messageEl || !cancelBtn || !proceedBtn) {
+      // Fallback to native confirm if DOM elements are missing
+      resolve(confirm(`${title}\n\n${message}`));
+      return;
+    }
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    
+    if (isDanger) {
+      proceedBtn.style.background = 'rgba(255, 82, 82, 0.12)';
+      proceedBtn.style.borderColor = 'rgba(255, 82, 82, 0.3)';
+      proceedBtn.style.color = '#ff5252';
+    } else {
+      proceedBtn.style.background = 'rgba(0, 230, 118, 0.12)';
+      proceedBtn.style.borderColor = 'rgba(0, 230, 118, 0.3)';
+      proceedBtn.style.color = 'var(--accent-green)';
+    }
+
+    modal.style.display = 'flex';
+
+    const cleanup = (result) => {
+      modal.style.display = 'none';
+      cancelBtn.removeEventListener('click', onCancel);
+      proceedBtn.removeEventListener('click', onProceed);
+      resolve(result);
+    };
+
+    const onCancel = () => cleanup(false);
+    const onProceed = () => cleanup(true);
+
+    cancelBtn.addEventListener('click', onCancel);
+    proceedBtn.addEventListener('click', onProceed);
+  });
+};
+
 // --- AUTHENTICATION GLOBALS ---
 function initGlobalAuth() {
   window.getCurrentUser = function () {
@@ -1319,110 +1364,304 @@ async function initStandingsPage() {
 async function initWinnerPage() {
   const podiumContainer = document.getElementById('podiumContainer');
   const body = document.getElementById('championsBody');
+  const tabChampionship = document.getElementById('tabChampionship');
+  const tabDaily = document.getElementById('tabDaily');
+  const dailySelectorContainer = document.getElementById('dailySelectorContainer');
+  const dailyDateSelect = document.getElementById('dailyDateSelect');
+
   if (!podiumContainer || !body) return;
 
-  try {
-    const response = await fetch('/api/games/overall-leaderboard');
-    const data = await response.json();
+  let activeTab = 'championship';
 
-    if (data.success && data.leaderboard) {
-      const list = data.leaderboard;
-
-      // 1. Render Podium Section (top 3)
-      podiumContainer.innerHTML = '';
-      if (list.length === 0) {
-        podiumContainer.innerHTML = '<div style="color: var(--text-muted); padding: 3rem;">No participants recorded yet. Play mini games to list here!</div>';
-        body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No participants yet.</td></tr>';
-        return;
+  // Helper to determine today's date and select it in the dropdown if available
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+  if (dailyDateSelect) {
+    for (let i = 0; i < dailyDateSelect.options.length; i++) {
+      if (dailyDateSelect.options[i].value === todayStr) {
+        dailyDateSelect.selectedIndex = i;
+        break;
       }
-
-      const top3 = list.slice(0, 3);
-      const podiumOrder = [];
-      
-      if (top3[1]) podiumOrder.push({ ...top3[1], place: '2nd', badgeClass: 'badge-2nd', avatarClass: 'avatar-2nd', cardClass: 'podium-2nd' }); // 2nd place
-      if (top3[0]) podiumOrder.push({ ...top3[0], place: '1st', badgeClass: 'badge-1st', avatarClass: 'avatar-1st', cardClass: 'podium-1st' }); // 1st place
-      if (top3[2]) podiumOrder.push({ ...top3[2], place: '3rd', badgeClass: 'badge-3rd', avatarClass: 'avatar-3rd', cardClass: 'podium-3rd' }); // 3rd place
-
-      podiumOrder.forEach(item => {
-        const card = document.createElement('div');
-        card.className = `podium-card ${item.cardClass}`;
-        
-        // Format username to reduce parts after a space to an initial (e.g., 'Suraj Kumar' -> 'Suraj K.')
-        const rawName = item.username;
-        const nameParts = rawName.trim().split(/\s+/);
-        let displayName = rawName;
-        if (nameParts.length > 1) {
-          displayName = `${nameParts[0]} ${nameParts[1].charAt(0).toUpperCase()}.`;
-        }
-
-        card.innerHTML = `
-          <span class="rank-badge ${item.badgeClass}">${item.place} Place</span>
-          <div class="podium-avatar ${item.avatarClass}">${displayName}</div>
-          <div class="podium-username" title="${item.username}">${item.username}</div>
-          <div class="podium-points">${item.overallPoints} pts</div>
-          <div class="podium-breakdown">
-            <div class="breakdown-row">
-              <span>Quiz:</span>
-              <span>${item.quizPoints} pts</span>
-            </div>
-            <div class="breakdown-row">
-              <span>Penalty:</span>
-              <span>${item.penaltyPoints} pts</span>
-            </div>
-            <div class="breakdown-row">
-              <span>Juggling:</span>
-              <span>${item.jugglingPoints} pts</span>
-            </div>
-            <div class="breakdown-row">
-              <span>Soccer:</span>
-              <span>${item.soccerPoints} pts</span>
-            </div>
-          </div>
-        `;
-        podiumContainer.appendChild(card);
-      });
-
-      // 2. Render standings table
-      body.innerHTML = '';
-      list.forEach(item => {
-        const row = document.createElement('tr');
-        
-        let rankHtml = item.rank;
-        if (item.rank === 1) rankHtml = '👑 1';
-        else if (item.rank === 2) rankHtml = '🥈 2';
-        else if (item.rank === 3) rankHtml = '🥉 3';
-
-        const user = window.getCurrentUser();
-        const isSelf = user && item.username === user.username;
-        if (isSelf) {
-          row.style.background = 'rgba(0, 230, 118, 0.05)';
-        }
-
-        row.innerHTML = `
-          <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
-          <td>
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
-              <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
-            </div>
-          </td>
-          <td style="text-align: center; color: var(--text-muted);">${item.quizPoints}</td>
-          <td style="text-align: center; color: var(--text-muted);">${item.penaltyPoints}</td>
-          <td style="text-align: center; color: var(--text-muted);">${item.jugglingPoints}</td>
-          <td style="text-align: center; color: var(--text-muted);">${item.soccerPoints}</td>
-          <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
-        `;
-        body.appendChild(row);
-      });
-    } else {
-      podiumContainer.innerHTML = '<div style="color: #ff5252; padding: 2rem;">Failed to retrieve standings.</div>';
-      body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #ff5252; padding: 2.5rem;">Failed to load data.</td></tr>';
     }
-  } catch (err) {
-    console.error('Failed to load overall champions board:', err);
-    podiumContainer.innerHTML = '<div style="color: #ff5252; padding: 2rem;">Failed to connect to backend server.</div>';
-    body.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #ff5252; padding: 2.5rem;">Server connection failed.</td></tr>';
   }
+
+  function updateTabStyles() {
+    if (!tabChampionship || !tabDaily || !dailySelectorContainer) return;
+    if (activeTab === 'championship') {
+      tabChampionship.style.background = 'var(--accent-green)';
+      tabChampionship.style.color = 'var(--text-dark)';
+      tabChampionship.style.border = 'none';
+
+      tabDaily.style.background = 'rgba(255,255,255,0.06)';
+      tabDaily.style.color = 'var(--text-muted)';
+      tabDaily.style.border = '1px solid var(--border-color)';
+
+      dailySelectorContainer.style.display = 'none';
+    } else {
+      tabDaily.style.background = 'var(--accent-green)';
+      tabDaily.style.color = 'var(--text-dark)';
+      tabDaily.style.border = 'none';
+
+      tabChampionship.style.background = 'rgba(255,255,255,0.06)';
+      tabChampionship.style.color = 'var(--text-muted)';
+      tabChampionship.style.border = '1px solid var(--border-color)';
+
+      dailySelectorContainer.style.display = 'flex';
+    }
+  }
+
+  async function renderLeaderboard() {
+    const listHead = document.getElementById('leaderboardHead');
+    const listBody = document.getElementById('championsBody');
+    if (!podiumContainer || !listBody || !listHead) return;
+
+    listBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading leaderboard...</td></tr>`;
+
+    try {
+      const url = activeTab === 'championship'
+        ? '/api/games/overall-leaderboard'
+        : `/api/games/daily-leaderboard?date=${dailyDateSelect.value}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.success && data.leaderboard) {
+        const list = data.leaderboard;
+
+        podiumContainer.innerHTML = '';
+        if (list.length === 0) {
+          podiumContainer.innerHTML = '<div style="color: var(--text-muted); padding: 3rem;">No participants recorded yet.</div>';
+          listBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No participants yet.</td></tr>`;
+          return;
+        }
+
+        const top3 = list.slice(0, 3);
+        const podiumOrder = [];
+        if (top3[1]) podiumOrder.push({ ...top3[1], place: '2nd', badgeClass: 'badge-2nd', avatarClass: 'avatar-2nd', cardClass: 'podium-2nd' });
+        if (top3[0]) podiumOrder.push({ ...top3[0], place: '1st', badgeClass: 'badge-1st', avatarClass: 'avatar-1st', cardClass: 'podium-1st' });
+        if (top3[2]) podiumOrder.push({ ...top3[2], place: '3rd', badgeClass: 'badge-3rd', avatarClass: 'avatar-3rd', cardClass: 'podium-3rd' });
+
+        const currentUser = window.getCurrentUser();
+        const isAdmin = currentUser && currentUser.role === 'admin';
+
+        // Update leaderboard header title text dynamically
+        const leaderboardTitle = document.getElementById('leaderboardTitle');
+        if (leaderboardTitle) {
+          leaderboardTitle.innerHTML = isAdmin ? '<span>📊</span> Detailed Point Standings' : '<span>📊</span> Point Standings';
+        }
+
+        podiumOrder.forEach(item => {
+          const card = document.createElement('div');
+          card.className = `podium-card ${item.cardClass} ${isAdmin ? '' : 'no-breakdown'}`;
+
+          const rawName = item.username;
+          const nameParts = rawName.trim().split(/\s+/);
+          let displayName = rawName;
+          if (nameParts.length > 1) {
+            displayName = `${nameParts[0]} ${nameParts[1].charAt(0).toUpperCase()}.`;
+          }
+
+          const pointsVal = activeTab === 'championship' ? item.overallPoints : item.dailyTotal;
+          const quizVal = activeTab === 'championship' ? item.quizPoints : item.quizNorm;
+          const penaltyVal = activeTab === 'championship' ? item.penaltyPoints : item.penaltyNorm;
+          const jugglingVal = activeTab === 'championship' ? item.jugglingPoints : item.jugglingNorm;
+          const soccerVal = activeTab === 'championship' ? item.soccerPoints : item.soccerNorm;
+          const unit = activeTab === 'championship' ? 'pts' : 'pts';
+
+          let breakdownHtml = '';
+          if (isAdmin) {
+            breakdownHtml = `
+              <div class="podium-breakdown">
+                <div class="breakdown-row">
+                  <span>Quiz:</span>
+                  <span>${quizVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
+                </div>
+                <div class="breakdown-row">
+                  <span>Penalty:</span>
+                  <span>${penaltyVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
+                </div>
+                <div class="breakdown-row">
+                  <span>Juggling:</span>
+                  <span>${jugglingVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
+                </div>
+                <div class="breakdown-row">
+                  <span>Soccer:</span>
+                  <span>${soccerVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
+                </div>
+              </div>
+            `;
+          }
+
+          card.innerHTML = `
+            <span class="rank-badge ${item.badgeClass}">${item.place} Place</span>
+            <div class="podium-avatar ${item.avatarClass}">${displayName}</div>
+            <div class="podium-username" title="${item.username}">${item.username}</div>
+            <div class="podium-points">${pointsVal} ${unit}</div>
+            ${breakdownHtml}
+          `;
+          podiumContainer.appendChild(card);
+        });
+
+        if (activeTab === 'championship') {
+          if (isAdmin) {
+            listHead.innerHTML = `
+              <tr>
+                <th style="width: 8%;">Rank</th>
+                <th>Competitor</th>
+                <th style="text-align: center; width: 12%;">Days Played</th>
+                <th style="text-align: center; width: 12%;">Quiz (40%)</th>
+                <th style="text-align: center; width: 12%;">Penalty (25%)</th>
+                <th style="text-align: center; width: 12%;">Juggling (25%)</th>
+                <th style="text-align: center; width: 12%;">Soccer (10%)</th>
+                <th style="text-align: right; width: 15%;">Total Points</th>
+              </tr>
+            `;
+          } else {
+            listHead.innerHTML = `
+              <tr>
+                <th style="width: 10%;">Rank</th>
+                <th>Competitor</th>
+                <th style="text-align: center; width: 30%;">Days Played</th>
+                <th style="text-align: right; width: 30%;">Total Points</th>
+              </tr>
+            `;
+          }
+        } else {
+          if (isAdmin) {
+            listHead.innerHTML = `
+              <tr>
+                <th style="width: 8%;">Rank</th>
+                <th>Competitor</th>
+                <th style="text-align: center; width: 15%;">Quiz (40%)</th>
+                <th style="text-align: center; width: 15%;">Penalty (25%)</th>
+                <th style="text-align: center; width: 15%;">Juggling (25%)</th>
+                <th style="text-align: center; width: 15%;">Soccer (10%)</th>
+                <th style="text-align: right; width: 20%;">Daily Total</th>
+              </tr>
+            `;
+          } else {
+            listHead.innerHTML = `
+              <tr>
+                <th style="width: 10%;">Rank</th>
+                <th>Competitor</th>
+                <th style="text-align: right; width: 40%;">Daily Total</th>
+              </tr>
+            `;
+          }
+        }
+
+        listBody.innerHTML = '';
+        list.forEach(item => {
+          const row = document.createElement('tr');
+          let rankHtml = item.rank;
+          if (item.rank === 1) rankHtml = '👑 1';
+          else if (item.rank === 2) rankHtml = '🥈 2';
+          else if (item.rank === 3) rankHtml = '🥉 3';
+
+          const isSelf = currentUser && item.username === currentUser.username;
+          if (isSelf) {
+            row.style.background = 'rgba(0, 230, 118, 0.05)';
+          }
+
+          if (activeTab === 'championship') {
+            if (isAdmin) {
+              row.innerHTML = `
+                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+                  </div>
+                </td>
+                <td style="text-align: center; color: var(--text-muted); font-weight: 600;">${item.daysPlayed}</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.quizPoints} / 240</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.penaltyPoints} / 150</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.jugglingPoints} / 150</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.soccerPoints} / 60</td>
+                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
+              `;
+            } else {
+              row.innerHTML = `
+                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+                  </div>
+                </td>
+                <td style="text-align: center; color: var(--text-muted); font-weight: 600;">${item.daysPlayed}</td>
+                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
+              `;
+            }
+          } else {
+            if (isAdmin) {
+              row.innerHTML = `
+                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+                  </div>
+                </td>
+                <td style="text-align: center; color: var(--text-muted);">${item.quizNorm} %</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.penaltyNorm} %</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.jugglingNorm} %</td>
+                <td style="text-align: center; color: var(--text-muted);">${item.soccerNorm} %</td>
+                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.dailyTotal}</td>
+              `;
+            } else {
+              row.innerHTML = `
+                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+                  </div>
+                </td>
+                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.dailyTotal}</td>
+              `;
+            }
+          }
+          listBody.appendChild(row);
+        });
+      } else {
+        podiumContainer.innerHTML = '<div style="color: #ff5252; padding: 2rem;">Failed to retrieve standings.</div>';
+        listBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #ff5252; padding: 2.5rem;">Failed to load data.</td></tr>';
+      }
+    } catch (err) {
+      console.error('Failed to load champions board:', err);
+      podiumContainer.innerHTML = '<div style="color: #ff5252; padding: 2rem;">Failed to connect to backend server.</div>';
+      listBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #ff5252; padding: 2.5rem;">Server connection failed.</td></tr>';
+    }
+  }
+
+  // Bind tab buttons
+  if (tabChampionship) {
+    tabChampionship.addEventListener('click', () => {
+      activeTab = 'championship';
+      updateTabStyles();
+      renderLeaderboard();
+    });
+  }
+
+  if (tabDaily) {
+    tabDaily.addEventListener('click', () => {
+      activeTab = 'daily';
+      updateTabStyles();
+      renderLeaderboard();
+    });
+  }
+
+  if (dailyDateSelect) {
+    dailyDateSelect.addEventListener('change', () => {
+      if (activeTab === 'daily') {
+        renderLeaderboard();
+      }
+    });
+  }
+
+  updateTabStyles();
+  renderLeaderboard();
 }
 
 function getEarliestActiveDate(matches) {
@@ -2063,9 +2302,11 @@ async function initSettingsPage() {
   };
 
   window.deleteUser = async (targetUsername) => {
-    if (!confirm(`Are you sure you want to delete user "${targetUsername}"?\nThis user will not be able to log in or register again with the same number.`)) {
-      return;
-    }
+    const confirmed = await window.showConfirm(
+      "Confirm User Deletion",
+      `Are you sure you want to delete user "${targetUsername}"? This user will not be able to log in or register again with the same number.`
+    );
+    if (!confirmed) return;
 
     try {
       const response = await fetch('/api/admin/users/delete', {
@@ -2096,6 +2337,51 @@ async function initSettingsPage() {
   if (adminBackupBtn) {
     adminBackupBtn.addEventListener('click', () => {
       window.downloadDbBackup(user);
+    });
+  }
+
+  // Bind Reset Game Data button
+  const adminResetGamesBtn = document.getElementById('adminResetGamesBtn');
+  if (adminResetGamesBtn) {
+    adminResetGamesBtn.addEventListener('click', async () => {
+      const confirmed1 = await window.showConfirm(
+        "⚠️ Reset Game Data",
+        "This will permanently delete ALL submissions and attempts for Quiz, Juggling, Penalty, and Soccer for ALL players! Are you sure you want to proceed?"
+      );
+      if (!confirmed1) return;
+
+      const confirmed2 = await window.showConfirm(
+        "⚠️ Final Confirmation",
+        "This action is completely irreversible. All scores and logs will be wiped out. Reset now?"
+      );
+      if (!confirmed2) return;
+      
+      try {
+        adminResetGamesBtn.disabled = true;
+        adminResetGamesBtn.textContent = "⏳ Resetting...";
+        
+        const response = await fetch('/api/admin/reset-games', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: user.username,
+            token: user.token
+          })
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          window.showToast(result.message || 'Game data reset successfully', 'success');
+        } else {
+          window.showToast(result.message || 'Failed to reset game data', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        window.showToast('Connection error', 'error');
+      } finally {
+        adminResetGamesBtn.disabled = false;
+        adminResetGamesBtn.textContent = "⚠️ Reset Game Data to 0";
+      }
     });
   }
 

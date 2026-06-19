@@ -54,6 +54,7 @@
       height: auto;
       background-color: #050b14;
       cursor: crosshair;
+      touch-action: none;
     }
 
     .scoreboard-overlay {
@@ -275,6 +276,46 @@
 
     .shake {
       animation: shake 0.4s ease-in-out;
+    }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 600px) {
+      .game-layout {
+        padding: 0.5rem;
+        gap: 1rem;
+      }
+      .modal-title {
+        font-size: 1.8rem;
+        letter-spacing: 1px;
+      }
+      .modal-subtitle {
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+        padding: 0 10px;
+      }
+      .game-modal {
+        padding: 1rem;
+      }
+      .win-submit-section {
+        padding: 0.75rem 1.25rem;
+        margin-bottom: 1rem;
+      }
+      .scoreboard-overlay {
+        padding: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: space-between;
+      }
+      .hud-stat {
+        flex: 1 1 30%;
+        min-width: 80px;
+      }
+      .score-box {
+        font-size: 1.25rem;
+      }
+      .stat-label {
+        font-size: 0.65rem;
+      }
     }
   </style>
 </head>
@@ -697,6 +738,8 @@
           let maxWindForce = 0.24;
           if (selectedDifficulty === 'easy') maxWindForce = 0.10;
           else if (selectedDifficulty === 'hard') maxWindForce = 0.48;
+          // Mobile boost: stronger wind on mobile
+          if (window.innerWidth <= 768) maxWindForce *= 1.40;
           wind.targetX = (Math.random() - 0.5) * maxWindForce;
         }
         wind.updateTimer = 300; // Change every 5 seconds
@@ -879,6 +922,8 @@
       } else if (selectedDifficulty === 'hard') {
         ball.gravity = 0.42;
       }
+      // Mobile boost: heavier gravity since tapping is less precise than clicking with a mouse
+      if (window.innerWidth <= 768) ball.gravity *= 1.20;
       
       particles = [];
       scorePopups = [];

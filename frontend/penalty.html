@@ -44,6 +44,7 @@
       width: 100%;
       height: auto;
       background-color: #0c1a12; /* Darker pitch green */
+      touch-action: none;
     }
 
     .scoreboard-overlay {
@@ -201,6 +202,97 @@
     @keyframes pulseGlow {
       0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.15); border-color: rgba(255, 215, 0, 0.3); }
       50% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); border-color: rgba(255, 215, 0, 0.7); }
+    }
+
+    /* Mobile Responsive Custom Rules */
+    @media (max-width: 600px) {
+      .game-layout {
+        padding: 0.5rem;
+      }
+      .game-header {
+        margin-bottom: 0.5rem;
+        gap: 0.5rem;
+      }
+      .game-header h2 {
+        font-size: 1.1rem !important;
+      }
+      .btn-sound {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+      }
+      .scoreboard-overlay {
+        padding: 0.4rem;
+        gap: 0.25rem;
+      }
+      .team-name {
+        font-size: 0.7rem;
+      }
+      .score-box {
+        font-size: 1.2rem;
+      }
+      .timer-val {
+        font-size: 1rem;
+      }
+      .vs-timer .timer-val {
+        font-size: 1rem !important;
+      }
+      #topScoreContainer {
+        padding: 4px 8px !important;
+      }
+      #topScoreContainer .score-box {
+        font-size: 1.2rem !important;
+      }
+      .shots-tracker {
+        gap: 4px;
+        margin-top: 0.2rem;
+      }
+      .shot-dot {
+        width: 10px;
+        height: 10px;
+      }
+      .controls-panel {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+      }
+      .controls-card {
+        padding: 0.5rem 0.75rem;
+      }
+      .controls-card h3 {
+        font-size: 0.85rem !important;
+        margin-bottom: 0.25rem !important;
+      }
+      .controls-card ul {
+        font-size: 0.75rem !important;
+        padding-left: 0.85rem !important;
+        line-height: 1.3;
+      }
+      /* Modal Responsive Styles */
+      .modal-title {
+        font-size: 1.8rem !important;
+        letter-spacing: 1px !important;
+        margin-bottom: 0.25rem !important;
+      }
+      .modal-subtitle {
+        font-size: 0.9rem !important;
+        margin-bottom: 1rem !important;
+      }
+      #winSubmitSection {
+        padding: 0.75rem 1rem !important;
+        margin-bottom: 1rem !important;
+        border-radius: 8px !important;
+      }
+      #gameTimeTakenResult {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.25rem !important;
+      }
+      #submitStatusMsg {
+        font-size: 0.8rem !important;
+      }
+      .game-modal .btn-lg {
+        padding: 0.5rem 1.25rem !important;
+        font-size: 0.95rem !important;
+      }
     }
   </style>
 </head>
@@ -581,6 +673,11 @@
       registerShot();
     });
 
+    canvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      registerShot();
+    }, { passive: false });
+
     function updateTrackers() {
       const dots = document.querySelectorAll('.shot-dot');
       dots.forEach((dot, index) => {
@@ -605,6 +702,8 @@
       let catchRadius = 70;
       if (selectedDifficulty === 'easy') catchRadius = 50;
       else if (selectedDifficulty === 'hard') catchRadius = 90;
+      // Mobile boost: goalie has larger catch area since tapping is less precise than mouse
+      if (window.innerWidth <= 768) catchRadius += 28;
       const isSaved = dist < catchRadius; // Catch area radius around goalie's body center during dive
 
       if (!hitGoal) {
@@ -668,6 +767,8 @@
       let speedMult = 1.0;
       if (selectedDifficulty === 'easy') speedMult = 0.6;
       else if (selectedDifficulty === 'hard') speedMult = 1.4;
+      // Mobile boost: reticle sweeps faster since tapping is less precise than mouse
+      if (window.innerWidth <= 768) speedMult *= 1.40;
       reticle.vx = (4 + Math.random() * 2) * speedMult * (Math.random() < 0.5 ? 1 : -1);
       reticle.vy = (3 + Math.random() * 1.5) * speedMult * (Math.random() < 0.5 ? 1 : -1);
 

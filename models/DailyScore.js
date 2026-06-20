@@ -7,6 +7,8 @@ const dailyScoreSchema = new mongoose.Schema({
   jugglingNorm: { type: Number, default: 0 },
   penaltyNorm: { type: Number, default: 0 },
   soccerNorm: { type: Number, default: 0 },
+  soccerAttemptsToday: { type: Number, default: 0 },
+  penaltyAttemptsToday: { type: Number, default: 0 },
   dailyTotal: { type: Number, default: 0 },
   updatedAt: { type: Date, default: Date.now }
 });

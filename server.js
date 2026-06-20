@@ -729,12 +729,12 @@ async function recomputeDailyScore(username, dateStr) {
       for (const attempt of penaltyAttempts) {
         const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
         const rawPoints = (attempt.goals * 20) + Math.max(0, Math.round((50 - attempt.timeTaken) * 2));
-        const raw = Math.min(rawPoints, 120) * mult;
+        const raw = rawPoints * mult; // Removed Math.min(rawPoints, 120) cap to ensure higher scores scale properly
         if (raw > maxPenaltyRaw) {
           maxPenaltyRaw = raw;
         }
       }
-      penaltyNorm = Math.min(maxPenaltyRaw, 120) / 120 * 100;
+      penaltyNorm = Math.min(maxPenaltyRaw, 300) / 300 * 100; // Normalized against max limit of 300 points
     }
 
     // 4. Soccer Norm
@@ -746,14 +746,14 @@ async function recomputeDailyScore(username, dateStr) {
         const diff = attempt.userGoals - attempt.aiGoals;
         if (diff > 0) {
           const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
-          const rawPoints = (diff * 20) + 50;
-          const raw = Math.min(rawPoints, 100) * mult;
+          const rawPoints = (diff * 20) + 20;
+          const raw = rawPoints * mult; // Removed premature cap to scale scores by goal margin
           if (raw > maxSoccerRaw) {
             maxSoccerRaw = raw;
           }
         }
       }
-      soccerNorm = Math.min(maxSoccerRaw, 100) / 100 * 100;
+      soccerNorm = Math.min(maxSoccerRaw, 200) / 200 * 100; // Normalized against max limit of 200 points
     }
 
     const dailyTotal = (quizNorm * 0.40) + (jugglingNorm * 0.25) + (penaltyNorm * 0.25) + (soccerNorm * 0.10);
@@ -837,10 +837,21 @@ app.post('/api/penalty/submit', async (req, res) => {
     }
 
     const todayStr = getTodayDateStr();
-    const attemptsCount = await PenaltyAttempt.countDocuments({ username: username.trim(), dateStr: todayStr });
+
+    // Find or create DailyScore to track penalty attempts count
+    let dailyScore = await DailyScore.findOne({ username: username.trim(), dateStr: todayStr });
+    if (!dailyScore) {
+      dailyScore = new DailyScore({
+        username: username.trim(),
+        dateStr: todayStr,
+        penaltyAttemptsToday: 0
+      });
+    }
+
+    const currentAttemptsCount = dailyScore.penaltyAttemptsToday || 0;
 
     if (sessionUser.role !== 'admin') {
-      if (attemptsCount >= 5) {
+      if (currentAttemptsCount >= 5) {
         return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 5 attempts today!" });
       }
     }
@@ -852,43 +863,55 @@ app.post('/api/penalty/submit', async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid score or time. Goals must be between 0 and 5." });
     }
 
-    const currentAttemptNo = attemptsCount + 1;
+    const newAttemptsCount = currentAttemptsCount + 1;
+    dailyScore.penaltyAttemptsToday = newAttemptsCount;
+    await dailyScore.save();
+
     const winStatus = goalsScored >= 3;
 
-    const newAttempt = new PenaltyAttempt({
-      username: username.trim(),
-      dateStr: todayStr,
-      attemptNo: currentAttemptNo,
-      goals: goalsScored,
-      timeTaken: secondsTaken,
-      difficulty: difficulty || 'medium',
-      winStatus,
-      createdAt: new Date()
-    });
+    // Retrieve existing attempt for today
+    let bestAttempt = await PenaltyAttempt.findOne({ username: username.trim(), dateStr: todayStr });
 
-    await newAttempt.save();
-    await recomputeDailyScore(username, todayStr);
+    const isBetter = !bestAttempt || 
+      (goalsScored > bestAttempt.goals) || 
+      (goalsScored === bestAttempt.goals && secondsTaken < bestAttempt.timeTaken);
 
-    // Find today's best attempt to return in response
-    const todayAttempts = await PenaltyAttempt.find({ username: username.trim(), dateStr: todayStr });
-    let bestAttempt = null;
-    for (const att of todayAttempts) {
-      if (!bestAttempt) {
-        bestAttempt = att;
-      } else if (att.goals > bestAttempt.goals) {
-        bestAttempt = att;
-      } else if (att.goals === bestAttempt.goals && att.timeTaken < bestAttempt.timeTaken) {
-        bestAttempt = att;
+    if (isBetter) {
+      if (bestAttempt) {
+        // Overwrite the existing attempt
+        bestAttempt.goals = goalsScored;
+        bestAttempt.timeTaken = secondsTaken;
+        bestAttempt.difficulty = difficulty || 'medium';
+        bestAttempt.winStatus = winStatus;
+        bestAttempt.attemptNo = newAttemptsCount;
+        bestAttempt.createdAt = new Date();
+        await bestAttempt.save();
+      } else {
+        // Create a new attempt
+        bestAttempt = new PenaltyAttempt({
+          username: username.trim(),
+          dateStr: todayStr,
+          attemptNo: newAttemptsCount,
+          goals: goalsScored,
+          timeTaken: secondsTaken,
+          difficulty: difficulty || 'medium',
+          winStatus,
+          createdAt: new Date()
+        });
+        await bestAttempt.save();
       }
+      
+      // Update normalized points
+      await recomputeDailyScore(username, todayStr);
     }
 
     // Determine attempts left
-    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 5 - currentAttemptNo);
+    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 5 - newAttemptsCount);
 
     return res.json({
       success: true,
-      message: "Score submitted successfully!",
-      attemptNo: currentAttemptNo,
+      message: isBetter ? "Score submitted successfully!" : "Attempt logged. Score did not exceed your daily best.",
+      attemptNo: newAttemptsCount,
       attemptsLeft,
       topScore: bestAttempt
     });
@@ -1088,11 +1111,22 @@ app.post('/api/soccer/submit', async (req, res) => {
     }
 
     const todayStr = getTodayDateStr();
-    const attemptsCount = await SoccerAttempt.countDocuments({ username: username.trim(), dateStr: todayStr });
+
+    // Find or create DailyScore to track soccer attempts count
+    let dailyScore = await DailyScore.findOne({ username: username.trim(), dateStr: todayStr });
+    if (!dailyScore) {
+      dailyScore = new DailyScore({
+        username: username.trim(),
+        dateStr: todayStr,
+        soccerAttemptsToday: 0
+      });
+    }
+
+    const currentAttemptsCount = dailyScore.soccerAttemptsToday || 0;
 
     if (sessionUser.role !== 'admin') {
-      if (attemptsCount >= 3) {
-        return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 3 attempts today!" });
+      if (currentAttemptsCount >= 5) {
+        return res.status(403).json({ success: false, message: "Game locked: You have reached the maximum of 5 attempts today!" });
       }
     }
 
@@ -1103,53 +1137,68 @@ app.post('/api/soccer/submit', async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid score details." });
     }
 
-    const currentAttemptNo = attemptsCount + 1;
+    const newAttemptsCount = currentAttemptsCount + 1;
+    dailyScore.soccerAttemptsToday = newAttemptsCount;
+    await dailyScore.save();
+
     const goalDifference = Math.max(0, pScore - aScore);
+    const isScoreSaved = pScore >= 3;
 
-    const newAttempt = new SoccerAttempt({
-      username: username.trim(),
-      dateStr: todayStr,
-      attemptNo: currentAttemptNo,
-      userGoals: pScore,
-      aiGoals: aScore,
-      goalDifference,
-      difficulty: difficulty || 'medium',
-      createdAt: new Date()
-    });
+    // Retrieve existing attempt for today
+    let bestAttempt = await SoccerAttempt.findOne({ username: username.trim(), dateStr: todayStr });
 
-    await newAttempt.save();
-    await recomputeDailyScore(username, todayStr);
+    const isBetter = !bestAttempt || 
+      (goalDifference > bestAttempt.goalDifference) || 
+      (goalDifference === bestAttempt.goalDifference && pScore > bestAttempt.userGoals);
 
-    // Find today's best attempt to return in response
-    const todayAttempts = await SoccerAttempt.find({ username: username.trim(), dateStr: todayStr });
-    let bestAttempt = null;
-    for (const att of todayAttempts) {
-      if (!bestAttempt) {
-        bestAttempt = att;
-      } else if (att.goalDifference > bestAttempt.goalDifference) {
-        bestAttempt = att;
-      } else if (att.goalDifference === bestAttempt.goalDifference && att.userGoals > bestAttempt.userGoals) {
-        bestAttempt = att;
+    if (isScoreSaved && isBetter) {
+      if (bestAttempt) {
+        // Overwrite the existing attempt
+        bestAttempt.userGoals = pScore;
+        bestAttempt.aiGoals = aScore;
+        bestAttempt.goalDifference = goalDifference;
+        bestAttempt.difficulty = difficulty || 'medium';
+        bestAttempt.attemptNo = newAttemptsCount;
+        bestAttempt.createdAt = new Date();
+        await bestAttempt.save();
+      } else {
+        // Create new attempt
+        bestAttempt = new SoccerAttempt({
+          username: username.trim(),
+          dateStr: todayStr,
+          attemptNo: newAttemptsCount,
+          userGoals: pScore,
+          aiGoals: aScore,
+          goalDifference,
+          difficulty: difficulty || 'medium',
+          createdAt: new Date()
+        });
+        await bestAttempt.save();
       }
+      
+      // Update normalized points
+      await recomputeDailyScore(username, todayStr);
     }
 
     // Determine attempts left
-    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 3 - currentAttemptNo);
+    const attemptsLeft = sessionUser.role === 'admin' ? 9999 : Math.max(0, 5 - newAttemptsCount);
 
     // Map bestAttempt to old fields for compatibility
     const formattedBestAttempt = bestAttempt ? {
       playerScore: bestAttempt.userGoals,
       aiScore: bestAttempt.aiGoals,
       difficulty: bestAttempt.difficulty,
-      attemptsToday: currentAttemptNo,
+      attemptsToday: newAttemptsCount,
       lastPlayedDate: todayStr,
       createdAt: bestAttempt.createdAt
     } : null;
 
     return res.json({
       success: true,
-      message: "Score submitted successfully!",
-      attemptNo: currentAttemptNo,
+      message: isScoreSaved && isBetter 
+        ? "Score submitted successfully!" 
+        : (isScoreSaved ? "Attempt logged. Score did not exceed your daily best." : "Attempt logged. Score below 3 not saved, but counts towards your daily attempts."),
+      attemptNo: newAttemptsCount,
       attemptsLeft,
       topScore: formattedBestAttempt
     });
@@ -1206,8 +1255,10 @@ app.get('/api/games/status', async (req, res) => {
     const quizCount = await QuizSubmission.countDocuments({ username, dateStr });
     const quizCompletedToday = quizCount > 0;
 
+    const dailyScore = await DailyScore.findOne({ username, dateStr });
+
     // 2. Penalty attempts and best raw score
-    const penaltyAttempts = await PenaltyAttempt.countDocuments({ username, dateStr });
+    const penaltyAttempts = dailyScore ? (dailyScore.penaltyAttemptsToday || 0) : 0;
     const penaltyAttemptsDocs = await PenaltyAttempt.find({ username, dateStr, winStatus: true });
     let bestPenaltyScore = 0;
     if (penaltyAttemptsDocs.length > 0) {
@@ -1223,7 +1274,7 @@ app.get('/api/games/status', async (req, res) => {
     }
 
     // 4. Soccer attempts and best raw score
-    const soccerAttempts = await SoccerAttempt.countDocuments({ username, dateStr });
+    const soccerAttempts = dailyScore ? (dailyScore.soccerAttemptsToday || 0) : 0;
     const soccerAttemptsDocs = await SoccerAttempt.find({ username, dateStr });
     let bestSoccerScore = 0;
     if (soccerAttemptsDocs.length > 0) {
@@ -1251,7 +1302,7 @@ app.get('/api/games/status', async (req, res) => {
         },
         soccer: {
           attempts: soccerAttempts,
-          limit: 3,
+          limit: 5,
           bestScore: bestSoccerScore
         }
       }

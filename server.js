@@ -713,12 +713,15 @@ async function recomputeDailyScore(username, dateStr) {
       let maxJugglingRaw = 0;
       for (const attempt of jugglingAttempts) {
         const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
-        const raw = attempt.score * mult;
+        const attemptNo = attempt.attemptNo || 1;
+        const attemptDeduction = (attemptNo - 1) * 15;
+        const rawPoints = attempt.score + (attempt.maxCombo * 10) + (attempt.timeSurvived * 20) - attemptDeduction;
+        const raw = Math.max(0, rawPoints) * mult;
         if (raw > maxJugglingRaw) {
           maxJugglingRaw = raw;
         }
       }
-      jugglingNorm = Math.min(maxJugglingRaw, 3000) / 3000 * 100;
+      jugglingNorm = Math.min(maxJugglingRaw, 12000) / 12000 * 100;
     }
 
     // 3. Penalty Norm
@@ -746,14 +749,14 @@ async function recomputeDailyScore(username, dateStr) {
         const diff = attempt.userGoals - attempt.aiGoals;
         if (diff > 0) {
           const mult = attempt.difficulty === 'hard' ? 2.0 : (attempt.difficulty === 'easy' ? 1.0 : 1.5);
-          const rawPoints = (diff * 20) + 20;
-          const raw = rawPoints * mult; // Removed premature cap to scale scores by goal margin
+          const rawPoints = (diff * 10) + 20;
+          const raw = rawPoints * mult;
           if (raw > maxSoccerRaw) {
             maxSoccerRaw = raw;
           }
         }
       }
-      soccerNorm = Math.min(maxSoccerRaw, 200) / 200 * 100; // Normalized against max limit of 200 points
+      soccerNorm = Math.min(maxSoccerRaw, 440) / 440 * 100;
     }
 
     const dailyTotal = (quizNorm * 0.40) + (jugglingNorm * 0.25) + (penaltyNorm * 0.25) + (soccerNorm * 0.10);

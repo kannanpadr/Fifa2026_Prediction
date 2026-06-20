@@ -1322,9 +1322,10 @@ app.get('/api/games/overall-leaderboard', async (req, res) => {
     const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
     const userNames = users.map(u => u.username.trim());
 
-    // Aggregate DailyScore grouping by username
+    const week2Dates = ['2026-6-21', '2026-6-22', '2026-6-23', '2026-6-24', '2026-6-25', '2026-6-26'];
+    // Aggregate DailyScore grouping by username, filtering for Week 2 dates
     const dailyScores = await DailyScore.aggregate([
-      { $match: { username: { $in: userNames } } },
+      { $match: { username: { $in: userNames }, dateStr: { $in: week2Dates } } },
       {
         $group: {
           _id: "$username",

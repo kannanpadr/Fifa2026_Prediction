@@ -13,7 +13,9 @@ const QuizSubmission = require('./models/QuizSubmission');
 
 function getTodayDateStr() {
   const today = new Date();
-  return today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+  const dateStr = today.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' });
+  const [month, day, year] = dateStr.split('/');
+  return `${year}-${month}-${day}`;
 }
 
 async function recomputeDailyScore(username, dateStr) {

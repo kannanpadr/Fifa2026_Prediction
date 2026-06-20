@@ -307,8 +307,7 @@ app.get('/api/quiz/daily', async (req, res) => {
       return res.status(403).json({ success: false, message: "Forbidden: Invalid session" });
     }
 
-    const today = new Date();
-    const dateStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+    const dateStr = getTodayDateStr();
 
     // Check if user has already completed the quiz today
     const existing = await QuizSubmission.findOne({ username: sessionUser.username, dateStr });
@@ -365,8 +364,7 @@ app.post('/api/quiz/submit', async (req, res) => {
     }
 
     // Determine current date string (YYYY-MM-DD)
-    const today = new Date();
-    const dateStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+    const dateStr = getTodayDateStr();
 
     // Check if submission already exists for this user today
     const existing = await QuizSubmission.findOne({ username: username.trim(), dateStr });
@@ -694,7 +692,9 @@ app.get('/api/leaderboard', async (req, res) => {
 
 function getTodayDateStr() {
   const today = new Date();
-  return today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
+  const dateStr = today.toLocaleDateString('en-US', { timeZone: 'Asia/Kolkata' });
+  const [month, day, year] = dateStr.split('/');
+  return `${year}-${month}-${day}`;
 }
 
 async function recomputeDailyScore(username, dateStr) {

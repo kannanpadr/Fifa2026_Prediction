@@ -316,6 +316,7 @@ app.get('/api/quiz/daily', async (req, res) => {
     }
 
     const tournamentStartDate = new Date('2026-06-01T00:00:00+0530');
+    const today = new Date();
     const msPerDay = 24 * 60 * 60 * 1000;
     const diffMs = today.getTime() - tournamentStartDate.getTime();
     const daySeed = Math.max(0, Math.floor(diffMs / msPerDay));
@@ -379,6 +380,7 @@ app.post('/api/quiz/submit', async (req, res) => {
 
     // Determine today's correct answers on backend securely
     const tournamentStartDate = new Date('2026-06-01T00:00:00+0530');
+    const today = new Date();
     const msPerDay = 24 * 60 * 60 * 1000;
     const diffMs = today.getTime() - tournamentStartDate.getTime();
     const daySeed = Math.max(0, Math.floor(diffMs / msPerDay));

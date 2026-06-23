@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -269,9 +270,21 @@
 
     /* Keyframe Shake for drop penalty */
     @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      20%, 60% { transform: translateX(-6px); }
-      40%, 80% { transform: translateX(6px); }
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20%,
+      60% {
+        transform: translateX(-6px);
+      }
+
+      40%,
+      80% {
+        transform: translateX(6px);
+      }
     }
 
     .shake {
@@ -284,41 +297,50 @@
         padding: 0.5rem;
         gap: 1rem;
       }
+
       .modal-title {
         font-size: 1.8rem;
         letter-spacing: 1px;
       }
+
       .modal-subtitle {
         font-size: 0.85rem;
         margin-bottom: 1rem;
         padding: 0 10px;
       }
+
       .game-modal {
         padding: 1rem;
       }
+
       .win-submit-section {
         padding: 0.75rem 1.25rem;
         margin-bottom: 1rem;
       }
+
       .scoreboard-overlay {
         padding: 0.5rem;
         flex-wrap: wrap;
         gap: 0.5rem;
         justify-content: space-between;
       }
+
       .hud-stat {
         flex: 1 1 30%;
         min-width: 80px;
       }
+
       .score-box {
         font-size: 1.25rem;
       }
+
       .stat-label {
         font-size: 0.65rem;
       }
     }
   </style>
 </head>
+
 <body class="animate-fade-in">
 
   <div class="game-layout">
@@ -327,7 +349,8 @@
       <a href="games.html" class="back-btn">
         <span>←</span> Back to Games
       </a>
-      <h2 style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
+      <h2
+        style="font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px;">
         ⚽ Juggling Pro
       </h2>
       <button id="soundToggle" class="btn-sound">
@@ -372,8 +395,9 @@
       <!-- Game Modal (Start/Over) -->
       <div class="game-modal show" id="gameModal">
         <h2 class="modal-title" id="modalTitle">JUGGLING PRO</h2>
-        <p class="modal-subtitle" id="modalSubtitle">Click or tap the football to keep it in the air. Tap offset controls direction. Watch the shifting wind and collect golden stars!</p>
-        
+        <p class="modal-subtitle" id="modalSubtitle">Click or tap the football to keep it in the air. Tap offset
+          controls direction. Watch the shifting wind and collect golden stars!</p>
+
         <div class="win-submit-section" id="submitSection" style="display: none;">
           <div class="win-submit-stat">
             <span>Final Score:</span>
@@ -387,7 +411,9 @@
             <span>Time Survived:</span>
             <span id="finalTimeText">0.0s</span>
           </div>
-          <div id="submitStatusMsg" style="font-size: 0.85rem; font-weight: 700; color: #ffd700; margin-top: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">Saving score...</div>
+          <div id="submitStatusMsg"
+            style="font-size: 0.85rem; font-weight: 700; color: #ffd700; margin-top: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+            Saving score...</div>
         </div>
 
         <button class="btn btn-primary btn-lg" id="startBtn">START GAME</button>
@@ -412,13 +438,15 @@
           </thead>
           <tbody id="leaderboardBody">
             <tr>
-              <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading scores...</td>
+              <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Loading scores...
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-color); padding-top: 0.75rem; text-align: left;">
+      <div
+        style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-color); padding-top: 0.75rem; text-align: left;">
         <h4 style="color: var(--text-main); font-weight: 700; margin-bottom: 4px;">🎯 Pro Tips:</h4>
         <ul style="padding-left: 1rem;">
           <li>Click the <strong>left</strong> of the ball to bounce it <strong>right</strong>.</li>
@@ -462,7 +490,7 @@
 
     function playSound(type) {
       if (!soundEnabled) return;
-      
+
       // Resume context if suspended
       if (audioCtx.state === 'suspended') {
         audioCtx.resume();
@@ -507,7 +535,7 @@
         osc.frequency.linearRampToValueAtTime(1050, now + 0.12);
         gain.gain.setValueAtTime(0.15, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-        
+
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
         osc2.connect(gain2);
@@ -516,7 +544,7 @@
         osc2.frequency.linearRampToValueAtTime(1050, now + 0.22);
         gain2.gain.setValueAtTime(0.15, now + 0.1);
         gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-        
+
         osc.start(now);
         osc.stop(now + 0.22);
         osc2.start(now + 0.1);
@@ -574,16 +602,18 @@
     let timerInterval = null;
     let selectedDifficulty = 'medium';
 
+    const isTablet = window.innerWidth >= 601 && window.innerWidth <= 1024;
+
     // Ball attributes
     const ball = {
       x: 400,
       y: 150,
       vx: 0,
       vy: 0,
-      radius: 24,
+      radius: isTablet ? 20 : 24,
       rotation: 0,
       angularVelocity: 0,
-      gravity: 0.34,
+      gravity: isTablet ? 0.44 : 0.34,
       bounceFactor: 0.75,
       isDead: false
     };
@@ -616,7 +646,7 @@
         const response = await fetch('/api/juggling/top');
         const data = await response.json();
         const body = document.getElementById('leaderboardBody');
-        
+
         if (data.success && data.topScores) {
           body.innerHTML = '';
           if (data.topScores.length === 0) {
@@ -813,14 +843,15 @@
         const dx = ball.x - clickX;
         const dy = ball.y - clickY;
 
-        // Upward velocity: higher velocity the lower the click is
-        const forceY = -8.5 - Math.max(0, dy * 0.08);
-        ball.vy = Math.max(-12, Math.min(-6.5, forceY));
+        // Upward velocity: higher velocity the lower the click is (speed increased for tablet)
+        const kickSpeedMult = isTablet ? 1.25 : 1.0;
+        const forceY = (-8.5 - Math.max(0, dy * 0.08)) * kickSpeedMult;
+        ball.vy = Math.max(-12 * kickSpeedMult, Math.min(-6.5 * kickSpeedMult, forceY));
 
         // Horizontal velocity: deflect away from click position
-        ball.vx = dx * 0.17;
+        ball.vx = dx * 0.17 * kickSpeedMult;
         // Limit horizontal velocity to avoid extreme speeds
-        ball.vx = Math.max(-7, Math.min(7, ball.vx));
+        ball.vx = Math.max(-7 * kickSpeedMult, Math.min(7 * kickSpeedMult, ball.vx));
 
         // Spin based on horizontal offset
         ball.angularVelocity = -dx * 0.015;
@@ -869,7 +900,7 @@
       combo = 0;
       document.getElementById('comboVal').textContent = 'x1';
       playSound('drop');
-      
+
       // Crack a life heart on UI
       const hearts = document.querySelectorAll('.life-heart');
       if (hearts[lives]) {
@@ -915,6 +946,8 @@
       ball.rotation = 0;
       ball.angularVelocity = 0;
 
+      ball.radius = isTablet ? 16 : 24;
+
       if (selectedDifficulty === 'easy') {
         ball.gravity = 0.30;
       } else if (selectedDifficulty === 'medium') {
@@ -922,9 +955,13 @@
       } else if (selectedDifficulty === 'hard') {
         ball.gravity = 0.42;
       }
-      // Mobile boost: heavier gravity since tapping is less precise than clicking with a mouse
-      if (window.innerWidth <= 768) ball.gravity *= 1.20;
-      
+
+      if (isTablet) {
+        ball.gravity *= 1.26; // Increase speed for tablet
+      } else if (window.innerWidth <= 600) {
+        ball.gravity *= 1.20; // Mobile boost
+      }
+
       particles = [];
       scorePopups = [];
       wind.particles = [];
@@ -938,7 +975,7 @@
       document.getElementById('comboVal').textContent = 'x1';
       document.getElementById('timerVal').textContent = '60.0s';
       document.getElementById('windVal').textContent = 'Calm';
-      
+
       const hearts = document.querySelectorAll('.life-heart');
       hearts.forEach(h => h.classList.remove('lost'));
 
@@ -950,7 +987,7 @@
         const elapsed = (Date.now() - startTime) / 1000;
         const timeLeft = Math.max(0, 60 - elapsed);
         document.getElementById('timerVal').textContent = timeLeft.toFixed(1) + 's';
-        
+
         if (timeLeft <= 0) {
           endGame();
         }
@@ -978,11 +1015,11 @@
       } else {
         document.getElementById('modalTitle').textContent = 'GAME OVER';
         document.getElementById('modalTitle').style.color = '#ef5350';
-        document.getElementById('modalSubtitle').textContent = score >= 50 
-          ? 'Amazing juggling skills! You are an elite competitor!' 
+        document.getElementById('modalSubtitle').textContent = score >= 50
+          ? 'Amazing juggling skills! You are an elite competitor!'
           : 'Good effort! Keep practicing to secure your place on the leaderboard.';
       }
-      
+
       document.getElementById('finalScoreText').textContent = score;
       document.getElementById('finalComboText').textContent = combo > maxCombo ? combo : maxCombo;
       document.getElementById('finalTimeText').textContent = timeSurvived.toFixed(2) + 's';
@@ -1009,13 +1046,13 @@
       // Draw Main White Ball Outer
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      const ballGrad = ctx.createRadialGradient(-radius*0.3, -radius*0.3, radius*0.1, 0, 0, radius);
+      const ballGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.1, 0, 0, radius);
       ballGrad.addColorStop(0, '#ffffff');
       ballGrad.addColorStop(0.75, '#e2e8f0');
       ballGrad.addColorStop(1, '#94a3b8');
       ctx.fillStyle = ballGrad;
       ctx.fill();
-      
+
       // Clean shadows for inner drawings
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
@@ -1150,7 +1187,7 @@
       ctx.fillStyle = 'rgba(15, 26, 48, 0.9)';
       ctx.fillRect(50, 10, 120, 20);
       ctx.fillRect(630, 10, 120, 20);
-      
+
       // Draw glowing light bulbs
       ctx.fillStyle = '#ffffff';
       ctx.shadowColor = '#00ff87';
@@ -1159,7 +1196,7 @@
         ctx.beginPath();
         ctx.arc(70 + i * 28, 20, 6, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.beginPath();
         ctx.arc(650 + i * 28, 20, 6, 0, Math.PI * 2);
         ctx.fill();
@@ -1224,7 +1261,7 @@
         if (star.active) {
           star.pulse += 0.06;
           star.timer--;
-          
+
           // Hover collision check (ball meets star)
           const dist = Math.hypot(ball.x - star.x, ball.y - star.y);
           if (dist < ball.radius + star.radius) {
@@ -1320,4 +1357,5 @@
 
   </script>
 </body>
+
 </html>

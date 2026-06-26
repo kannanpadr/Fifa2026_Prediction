@@ -212,7 +212,7 @@
         </div>
         <div class="score-item" style="color: #ffb74d;">
           <span class="score-val" id="resUnattempted">0</span>
-          <span style="font-size: 0.8rem; text-transform: uppercase;">Unattempted (-1)</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase;">Unattempted (-0.5)</span>
         </div>
       </div>
 
@@ -242,7 +242,7 @@
     let unattemptedCount = 40;
     let currentScore = 0;
 
-    let timeLeft = 60.0;
+    let timeLeft = 100.0;
     let timerInterval = null;
     let isSubmitting = false;
 
@@ -411,7 +411,7 @@
       resultScreen.style.display = 'block';
 
       // Update UI with calculated score
-      const finalScore = (correctCount * 5) - (incorrectCount * 3) - (unattemptedCount * 1);
+      const finalScore = (correctCount * 5) - (incorrectCount * 3) - (unattemptedCount * 0.5);
       
       document.getElementById('resCorrect').textContent = correctCount;
       document.getElementById('resIncorrect').textContent = incorrectCount;

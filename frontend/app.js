@@ -2199,7 +2199,7 @@ async function initGamesPage() {
       </div>
       <div>
         <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${rapidFireLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">Min to Win</h3>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; line-height: 1.3;">40 questions in 60 seconds.</p>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; line-height: 1.3;">40 questions in 100 seconds.</p>
         <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6);">
           <span>Status: ${rapidFireLocked ? 'Completed' : 'Available'}</span>
         </div>

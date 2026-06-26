@@ -404,7 +404,7 @@ app.post('/api/rapid-fire/submit', async (req, res) => {
     }
 
     // Calculate score server-side to prevent spoofing
-    const score = (correct * 5) - (incorrect * 3) - (unattempted * 1);
+    const score = (correct * 5) - (incorrect * 3) - (unattempted * 0.5);
 
     const dateStr = getTodayDateStr();
 

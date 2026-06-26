@@ -208,7 +208,7 @@
         </div>
         <div class="score-item" style="color: #ef5350;">
           <span class="score-val" id="resIncorrect">0</span>
-          <span style="font-size: 0.8rem; text-transform: uppercase;">Incorrect (-3)</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase;">Incorrect (-2)</span>
         </div>
         <div class="score-item" style="color: #ffb74d;">
           <span class="score-val" id="resUnattempted">0</span>
@@ -379,7 +379,7 @@
       } else {
         btn.classList.add('wrong');
         incorrectCount++;
-        currentScore -= 3;
+        currentScore -= 2;
         
         // Highlight correct
         allBtns.forEach((b, idx) => {
@@ -411,7 +411,7 @@
       resultScreen.style.display = 'block';
 
       // Update UI with calculated score
-      const finalScore = (correctCount * 5) - (incorrectCount * 3) - (unattemptedCount * 0.5);
+      const finalScore = (correctCount * 5) - (incorrectCount * 2) - (unattemptedCount * 0.5);
       
       document.getElementById('resCorrect').textContent = correctCount;
       document.getElementById('resIncorrect').textContent = incorrectCount;

@@ -184,6 +184,7 @@ const LeaderboardEntry = require('./models/LeaderboardEntry');
 const User = require('./models/User');
 const VisitorCounter = require('./models/VisitorCounter');
 const QuizSubmission = require('./models/QuizSubmission');
+const RapidFireSubmission = require('./models/RapidFireSubmission');
 const PenaltyScore = require('./models/PenaltyScore');
 const JugglingScore = require('./models/JugglingScore');
 const SoccerScore = require('./models/SoccerScore');
@@ -301,6 +302,135 @@ app.get('/api/visits', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ count: 0 });
+  }
+});
+
+
+// ==========================================
+// RAPID FIRE QUIZ ENDPOINTS
+// ==========================================
+
+// Get Daily Rapid Fire Questions (40 questions, seeded by date)
+app.get('/api/rapid-fire/daily', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  let token;
+  if (authHeader && authHeader.startsWith('Bearer ')) token = authHeader.substring(7);
+
+  if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  try {
+    const sessionUser = await User.findOne({ sessionToken: token });
+    if (!sessionUser) return res.status(403).json({ success: false, message: "Forbidden" });
+
+    const dateStr = getTodayDateStr();
+
+    // Check if user has already completed the rapid fire quiz today
+    const existing = await RapidFireSubmission.findOne({ username: sessionUser.username, dateStr });
+    if (existing && sessionUser.role !== 'admin') {
+      return res.json({ success: true, completedToday: true, score: existing.score, correct: existing.correct, incorrect: existing.incorrect, unattempted: existing.unattempted });
+    }
+
+    // Flatten all questions from the pool
+    let allQuestions = [];
+    for (const key in questionsPool) {
+      allQuestions = allQuestions.concat(questionsPool[key]);
+    }
+
+    // Seeded random shuffle based on today's date
+    const tournamentStartDate = new Date('2026-06-01T00:00:00+0530');
+    const today = new Date();
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diffMs = today.getTime() - tournamentStartDate.getTime();
+    const daySeed = Math.max(0, Math.floor(diffMs / msPerDay));
+
+    // Simple seeded random function
+    function seededRandom(seed) {
+      var x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
+    }
+
+    // Shuffle using the seed
+    let seed = daySeed;
+    let shuffled = [...allQuestions];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(seededRandom(seed++) * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    // Pick exactly 40 questions
+    const dailyQuestions = shuffled.slice(0, 40);
+
+    const clientQuestions = dailyQuestions.map((q, idx) => {
+      let optionsWithIndex = q.o.map((text, origIdx) => ({ text, origIdx }));
+      let qSeed = daySeed + (idx + 1) * 100;
+      for (let i = optionsWithIndex.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom(qSeed++) * (i + 1));
+        [optionsWithIndex[i], optionsWithIndex[j]] = [optionsWithIndex[j], optionsWithIndex[i]];
+      }
+      const newCorrectIdx = optionsWithIndex.findIndex(opt => opt.origIdx === q.a);
+
+      return {
+        q: q.q,
+        o: optionsWithIndex.map(opt => opt.text),
+        d: q.d,
+        a: Buffer.from(newCorrectIdx.toString()).toString('base64')
+      };
+    });
+
+    return res.json({ success: true, completedToday: false, questions: clientQuestions });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error fetching rapid fire questions" });
+  }
+});
+
+// Submit Rapid Fire Quiz
+app.post('/api/rapid-fire/submit', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  let token;
+  if (authHeader && authHeader.startsWith('Bearer ')) token = authHeader.substring(7);
+
+  if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+  try {
+    const sessionUser = await User.findOne({ sessionToken: token });
+    if (!sessionUser) return res.status(403).json({ success: false, message: "Forbidden" });
+
+    const { correct, incorrect, unattempted } = req.body;
+    
+    // Validate bounds
+    if (correct + incorrect + unattempted > 40) {
+      return res.status(400).json({ success: false, message: "Invalid question count" });
+    }
+
+    // Calculate score server-side to prevent spoofing
+    const score = (correct * 5) - (incorrect * 3) - (unattempted * 1);
+
+    const dateStr = getTodayDateStr();
+
+    if (sessionUser.role !== 'admin') {
+      const existing = await RapidFireSubmission.findOne({ username: sessionUser.username, dateStr });
+      if (existing) {
+        return res.status(409).json({ success: false, message: "You have already played Rapid Fire today!" });
+      }
+    } else {
+      await RapidFireSubmission.deleteOne({ username: sessionUser.username, dateStr });
+    }
+
+    const submission = new RapidFireSubmission({
+      username: sessionUser.username,
+      dateStr,
+      score,
+      correct,
+      incorrect,
+      unattempted
+    });
+    await submission.save();
+
+    return res.json({ success: true, message: "Rapid Fire completed!", score });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ success: false, message: "Server error saving submission" });
   }
 });
 
@@ -1272,6 +1402,10 @@ app.get('/api/games/status', async (req, res) => {
     const dateStr = getTodayDateStr();
 
     // 1. Daily Quiz Status
+    
+    const rapidFireCount = await RapidFireSubmission.countDocuments({ username, dateStr });
+    const rapidFireCompleted = rapidFireCount > 0;
+
     const quizCount = await QuizSubmission.countDocuments({ username, dateStr });
     const quizCompletedToday = quizCount > 0;
 
@@ -1310,6 +1444,11 @@ app.get('/api/games/status', async (req, res) => {
           attempts: quizCompletedToday ? 1 : 0,
           limit: 1
         },
+        rapidFire: {
+          completedToday: rapidFireCompleted,
+          attempts: rapidFireCompleted ? 1 : 0,
+          limit: 1
+        },
         juggling: {
           attempts: jugglingAttempts,
           limit: 5,
@@ -1340,83 +1479,47 @@ app.get('/api/games/overall-leaderboard', async (req, res) => {
     const userNames = users.map(u => u.username.trim());
 
     const week2Dates = ['2026-6-21', '2026-6-22', '2026-6-23', '2026-6-24', '2026-6-25', '2026-6-26'];
-    // Aggregate DailyScore grouping by username, filtering for Week 2 dates
-    const dailyScores = await DailyScore.aggregate([
+    const dailyScores = await RapidFireSubmission.aggregate([
       { $match: { username: { $in: userNames }, dateStr: { $in: week2Dates } } },
       {
         $group: {
           _id: "$username",
-          championshipScore: { $sum: "$dailyTotal" },
-          quizSum: { $sum: "$quizNorm" },
-          jugglingSum: { $sum: "$jugglingNorm" },
-          penaltySum: { $sum: "$penaltyNorm" },
-          soccerSum: { $sum: "$soccerNorm" },
+          championshipScore: { $sum: "$score" },
           daysPlayed: { $sum: 1 }
         }
       }
     ]);
 
-    // Create a lookup map
     const scoreMap = {};
     dailyScores.forEach(item => {
       scoreMap[item._id] = item;
     });
 
-    // Compile entries for all users
     const entries = users.map(user => {
       const username = user.username.trim();
-      const scoreData = scoreMap[username] || {
-        championshipScore: 0,
-        quizSum: 0,
-        jugglingSum: 0,
-        penaltySum: 0,
-        soccerSum: 0,
-        daysPlayed: 0
-      };
+      const scoreData = scoreMap[username] || { championshipScore: 0, daysPlayed: 0 };
 
       return {
         username,
         avatar: username.charAt(0).toUpperCase(),
         championshipScore: parseFloat(scoreData.championshipScore.toFixed(2)),
         daysPlayed: scoreData.daysPlayed,
-        quizSum: parseFloat(scoreData.quizSum.toFixed(2)),
-        jugglingSum: parseFloat(scoreData.jugglingSum.toFixed(2)),
-        penaltySum: parseFloat(scoreData.penaltySum.toFixed(2)),
-        soccerSum: parseFloat(scoreData.soccerSum.toFixed(2)),
-        // Compatibility fields for existing frontend bindings
-        overallPoints: parseFloat(scoreData.championshipScore.toFixed(2)),
-        quizPoints: parseFloat((scoreData.quizSum * 0.40).toFixed(2)),
-        jugglingPoints: parseFloat((scoreData.jugglingSum * 0.25).toFixed(2)),
-        penaltyPoints: parseFloat((scoreData.penaltySum * 0.25).toFixed(2)),
-        soccerPoints: parseFloat((scoreData.soccerSum * 0.10).toFixed(2))
+        overallPoints: parseFloat(scoreData.championshipScore.toFixed(2))
       };
     });
 
-    // Sort: championshipScore desc, quizSum desc, jugglingSum desc, penaltySum desc, username asc
     entries.sort((a, b) => {
       if (b.championshipScore !== a.championshipScore) {
         return b.championshipScore - a.championshipScore;
       }
-      if (b.quizSum !== a.quizSum) {
-        return b.quizSum - a.quizSum;
-      }
-      if (b.jugglingSum !== a.jugglingSum) {
-        return b.jugglingSum - a.jugglingSum;
-      }
-      if (b.penaltySum !== a.penaltySum) {
-        return b.penaltySum - a.penaltySum;
-      }
       return a.username.localeCompare(b.username);
     });
 
-    // Add rank
-    entries.forEach((e, idx) => {
-      e.rank = idx + 1;
-    });
+    entries.forEach((e, idx) => { e.rank = idx + 1; });
 
     res.json({ success: true, leaderboard: entries });
   } catch (err) {
-    console.error("Error generating overall leaderboard:", err);
+    console.error("Error fetching overall championship board:", err);
     res.status(500).json({ success: false, message: "Failed to generate overall championship board" });
   }
 });
@@ -1431,11 +1534,10 @@ app.get('/api/games/daily-leaderboard', async (req, res) => {
     const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
     const userNames = users.map(u => u.username.trim());
 
-    const scores = await DailyScore.find({ dateStr: date, username: { $in: userNames } })
-      .sort({ dailyTotal: -1, quizNorm: -1, jugglingNorm: -1, penaltyNorm: -1, username: 1 })
+    const scores = await RapidFireSubmission.find({ dateStr: date, username: { $in: userNames } })
+      .sort({ score: -1, username: 1 })
       .exec();
 
-    // Map existing scores to lookup map
     const scoreMap = {};
     scores.forEach(item => {
       scoreMap[item.username] = item;
@@ -1443,38 +1545,21 @@ app.get('/api/games/daily-leaderboard', async (req, res) => {
 
     const leaderboard = users.map(user => {
       const username = user.username.trim();
-      const scoreData = scoreMap[username] || {
-        dailyTotal: 0,
-        quizNorm: 0,
-        jugglingNorm: 0,
-        penaltyNorm: 0,
-        soccerNorm: 0
-      };
+      const scoreData = scoreMap[username] || { score: 0 };
 
       return {
         username,
         avatar: username.charAt(0).toUpperCase(),
-        dailyTotal: parseFloat(scoreData.dailyTotal.toFixed(2)),
-        quizNorm: parseFloat(scoreData.quizNorm.toFixed(2)),
-        jugglingNorm: parseFloat(scoreData.jugglingNorm.toFixed(2)),
-        penaltyNorm: parseFloat(scoreData.penaltyNorm.toFixed(2)),
-        soccerNorm: parseFloat(scoreData.soccerNorm.toFixed(2))
+        dailyTotal: parseFloat(scoreData.score.toFixed(2))
       };
     });
 
-    // Sort: dailyTotal desc, quizNorm desc, jugglingNorm desc, penaltyNorm desc, username asc
     leaderboard.sort((a, b) => {
       if (b.dailyTotal !== a.dailyTotal) return b.dailyTotal - a.dailyTotal;
-      if (b.quizNorm !== a.quizNorm) return b.quizNorm - a.quizNorm;
-      if (b.jugglingNorm !== a.jugglingNorm) return b.jugglingNorm - a.jugglingNorm;
-      if (b.penaltyNorm !== a.penaltyNorm) return b.penaltyNorm - a.penaltyNorm;
       return a.username.localeCompare(b.username);
     });
 
-    // Add rank
-    leaderboard.forEach((e, idx) => {
-      e.rank = idx + 1;
-    });
+    leaderboard.forEach((e, idx) => { e.rank = idx + 1; });
 
     res.json({ success: true, leaderboard });
   } catch (err) {
@@ -1484,82 +1569,86 @@ app.get('/api/games/daily-leaderboard', async (req, res) => {
 });
 
 
+// ==========================================
+// GROUP STANDINGS
+// ==========================================
+
+// Predefined groups according to standard format
 const INITIAL_GROUPS = {
   A: [
     { name: 'Mexico', code: 'mx' },
-    { name: 'South Korea', code: 'kr' },
-    { name: 'South Africa', code: 'za' },
-    { name: 'Czech Republic', code: 'cz' }
+    { name: 'Cameroon', code: 'cm' },
+    { name: 'Croatia', code: 'hr' },
+    { name: 'Saudi Arabia', code: 'sa' }
   ],
   B: [
     { name: 'Canada', code: 'ca' },
-    { name: 'Bosnia and Herzegovina', code: 'ba' },
-    { name: 'Qatar', code: 'qa' },
-    { name: 'Switzerland', code: 'ch' }
+    { name: 'Nigeria', code: 'ng' },
+    { name: 'South Korea', code: 'kr' },
+    { name: 'Costa Rica', code: 'cr' }
   ],
   C: [
-    { name: 'Brazil', code: 'br' },
-    { name: 'Morocco', code: 'ma' },
-    { name: 'Scotland', code: 'gb-sct' },
-    { name: 'Haiti', code: 'ht' }
+    { name: 'USA', code: 'us' },
+    { name: 'Algeria', code: 'dz' },
+    { name: 'Serbia', code: 'rs' },
+    { name: 'Qatar', code: 'qa' }
   ],
   D: [
-    { name: 'United States', code: 'us' },
-    { name: 'Paraguay', code: 'py' },
-    { name: 'Australia', code: 'au' },
-    { name: 'Türkiye', code: 'tr' }
+    { name: 'Argentina', code: 'ar' },
+    { name: 'Ivory Coast', code: 'ci' },
+    { name: 'Iran', code: 'ir' },
+    { name: 'Slovakia', code: 'sk' }
   ],
   E: [
-    { name: 'Germany', code: 'de' },
-    { name: 'Ecuador', code: 'ec' },
-    { name: 'Ivory Coast', code: 'ci' },
-    { name: 'Curaçao', code: 'cw' }
+    { name: 'Brazil', code: 'br' },
+    { name: 'Mali', code: 'ml' },
+    { name: 'Japan', code: 'jp' },
+    { name: 'Scotland', code: 'gb-sct' }
   ],
   F: [
-    { name: 'Netherlands', code: 'nl' },
-    { name: 'Japan', code: 'jp' },
-    { name: 'Sweden', code: 'se' },
-    { name: 'Tunisia', code: 'tn' }
+    { name: 'France', code: 'fr' },
+    { name: 'Morocco', code: 'ma' },
+    { name: 'Australia', code: 'au' },
+    { name: 'Peru', code: 'pe' }
   ],
   G: [
-    { name: 'Belgium', code: 'be' },
-    { name: 'Egypt', code: 'eg' },
-    { name: 'Iran', code: 'ir' },
+    { name: 'Spain', code: 'es' },
+    { name: 'Senegal', code: 'sn' },
+    { name: 'Saudi Arabia', code: 'sa' },
     { name: 'New Zealand', code: 'nz' }
   ],
   H: [
-    { name: 'Spain', code: 'es' },
-    { name: 'Uruguay', code: 'uy' },
+    { name: 'England', code: 'gb-eng' },
+    { name: 'Tunisia', code: 'tn' },
     { name: 'Saudi Arabia', code: 'sa' },
-    { name: 'Cabo Verde', code: 'cv' }
+    { name: 'Jamaica', code: 'jm' }
   ],
   I: [
-    { name: 'France', code: 'fr' },
-    { name: 'Senegal', code: 'sn' },
-    { name: 'Norway', code: 'no' },
-    { name: 'Iraq', code: 'iq' }
+    { name: 'Belgium', code: 'be' },
+    { name: 'Egypt', code: 'eg' },
+    { name: 'South Korea', code: 'kr' },
+    { name: 'Panama', code: 'pa' }
   ],
   J: [
-    { name: 'Argentina', code: 'ar' },
-    { name: 'Austria', code: 'at' },
-    { name: 'Algeria', code: 'dz' },
-    { name: 'Jordan', code: 'jo' }
+    { name: 'Portugal', code: 'pt' },
+    { name: 'Ghana', code: 'gh' },
+    { name: 'Iran', code: 'ir' },
+    { name: 'Honduras', code: 'hn' }
   ],
   K: [
-    { name: 'Portugal', code: 'pt' },
-    { name: 'Colombia', code: 'co' },
-    { name: 'Uzbekistan', code: 'uz' },
-    { name: 'Congo DR', code: 'cd' }
+    { name: 'Netherlands', code: 'nl' },
+    { name: 'South Africa', code: 'za' },
+    { name: 'Japan', code: 'jp' },
+    { name: 'El Salvador', code: 'sv' }
   ],
   L: [
-    { name: 'England', code: 'gb-eng' },
-    { name: 'Croatia', code: 'hr' },
-    { name: 'Ghana', code: 'gh' },
-    { name: 'Panama', code: 'pa' }
+    { name: 'Germany', code: 'de' },
+    { name: 'Cameroon', code: 'cm' },
+    { name: 'Australia', code: 'au' },
+    { name: 'Haiti', code: 'ht' }
   ]
 };
 
-// Get Group Standings (Calculated Dynamically from Matches)
 app.get('/api/standings', async (req, res) => {
   try {
     const matches = await Match.find();
@@ -1657,7 +1746,7 @@ app.get('/api/standings', async (req, res) => {
   }
 });
 
-// Admin Match Score Management
+
 app.post('/api/admin/matches/update', async (req, res) => {
   const { username, matchId, team1Score, team2Score, status } = req.body;
   if (!username || matchId === undefined || !status) {
@@ -1812,6 +1901,7 @@ app.post('/api/admin/reset-games', async (req, res) => {
     // Delete all submissions & attempts
     await Promise.all([
       QuizSubmission.deleteMany({}),
+      RapidFireSubmission.deleteMany({}),
       JugglingAttempt.deleteMany({}),
       PenaltyAttempt.deleteMany({}),
       SoccerAttempt.deleteMany({}),
@@ -1846,7 +1936,7 @@ app.get('/api/admin/db/export', async (req, res) => {
     }
 
     // Fetch all collections in parallel
-    const [users, matches, predictions, quizSubmissions, leaderboardEntries, visitorCounters, penaltyScores, jugglingScores, soccerScores] = await Promise.all([
+    const [users, matches, predictions, quizSubmissions, rapidFireSubmissions, leaderboardEntries, visitorCounters, penaltyScores, jugglingScores, soccerScores] = await Promise.all([
       User.find({}, { pinHash: 0, sessionToken: 0 }), // Exclude pinHash and sessionToken for safety/security
       Match.find().sort({ id: 1 }),
       Prediction.find().sort({ submittedAt: -1 }),

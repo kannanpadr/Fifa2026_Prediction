@@ -213,6 +213,14 @@ function initGlobalUI() {
     });
   }
 
+  // Hide standings menu for regular users
+  if (user.role === 'user') {
+    const navStandings = document.getElementById('navStandings');
+    const mobNavStandings = document.getElementById('mobNavStandings');
+    if (navStandings) navStandings.parentElement.style.display = 'none'; // hide the wrapper li
+    if (mobNavStandings) mobNavStandings.style.display = 'none';
+  }
+
   // Dynamically inject Admin DB Diagnostics menu item in the profile dropdown if not present
   const profileDropdown = document.getElementById('profileDropdown');
   if (profileDropdown && !document.getElementById('adminDbDiagnosticsLink')) {
@@ -1396,7 +1404,6 @@ async function initWinnerPage() {
 
   let activeTab = 'championship';
 
-  // Helper to determine today's date and select it in the dropdown if available
   const today = new Date();
   const todayStr = today.getFullYear() + '-' + (today.getMonth() + 1) + '-' + today.getDate();
   if (dailyDateSelect) {
@@ -1438,7 +1445,7 @@ async function initWinnerPage() {
     const listBody = document.getElementById('championsBody');
     if (!podiumContainer || !listBody || !listHead) return;
 
-    listBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading leaderboard...</td></tr>`;
+    listBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading leaderboard...</td></tr>';
 
     try {
       const url = activeTab === 'championship'
@@ -1454,28 +1461,18 @@ async function initWinnerPage() {
         podiumContainer.innerHTML = '';
         if (list.length === 0) {
           podiumContainer.innerHTML = '<div style="color: var(--text-muted); padding: 3rem;">No participants recorded yet.</div>';
-          listBody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No participants yet.</td></tr>`;
+          listBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No data available for this selection.</td></tr>';
           return;
         }
 
-        const top3 = list.slice(0, 3);
         const podiumOrder = [];
-        if (top3[1]) podiumOrder.push({ ...top3[1], place: '2nd', badgeClass: 'badge-2nd', avatarClass: 'avatar-2nd', cardClass: 'podium-2nd' });
-        if (top3[0]) podiumOrder.push({ ...top3[0], place: '1st', badgeClass: 'badge-1st', avatarClass: 'avatar-1st', cardClass: 'podium-1st' });
-        if (top3[2]) podiumOrder.push({ ...top3[2], place: '3rd', badgeClass: 'badge-3rd', avatarClass: 'avatar-3rd', cardClass: 'podium-3rd' });
-
-        const currentUser = window.getCurrentUser();
-        const isAdmin = currentUser && currentUser.role === 'admin';
-
-        // Update leaderboard header title text dynamically
-        const leaderboardTitle = document.getElementById('leaderboardTitle');
-        if (leaderboardTitle) {
-          leaderboardTitle.innerHTML = isAdmin ? '<span>📊</span> Detailed Point Standings' : '<span>📊</span> Point Standings';
-        }
+        if (list[1]) podiumOrder.push({ ...list[1], cardClass: 'second' });
+        if (list[0]) podiumOrder.push({ ...list[0], cardClass: 'first' });
+        if (list[2]) podiumOrder.push({ ...list[2], cardClass: 'third' });
 
         podiumOrder.forEach(item => {
           const card = document.createElement('div');
-          card.className = `podium-card ${item.cardClass} ${isAdmin ? '' : 'no-breakdown'}`;
+          card.className = `podium-card ${item.cardClass} no-breakdown`;
 
           const rawName = item.username;
           const nameParts = rawName.trim().split(/\s+/);
@@ -1485,92 +1482,33 @@ async function initWinnerPage() {
           }
 
           const pointsVal = activeTab === 'championship' ? item.overallPoints : item.dailyTotal;
-          const quizVal = activeTab === 'championship' ? item.quizPoints : item.quizNorm;
-          const penaltyVal = activeTab === 'championship' ? item.penaltyPoints : item.penaltyNorm;
-          const jugglingVal = activeTab === 'championship' ? item.jugglingPoints : item.jugglingNorm;
-          const soccerVal = activeTab === 'championship' ? item.soccerPoints : item.soccerNorm;
-          const unit = activeTab === 'championship' ? 'pts' : 'pts';
-
-          let breakdownHtml = '';
-          if (isAdmin) {
-            breakdownHtml = `
-              <div class="podium-breakdown">
-                <div class="breakdown-row">
-                  <span>Quiz:</span>
-                  <span>${quizVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
-                </div>
-                <div class="breakdown-row">
-                  <span>Penalty:</span>
-                  <span>${penaltyVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
-                </div>
-                <div class="breakdown-row">
-                  <span>Juggling:</span>
-                  <span>${jugglingVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
-                </div>
-                <div class="breakdown-row">
-                  <span>Soccer:</span>
-                  <span>${soccerVal} ${activeTab === 'championship' ? 'pts' : '%'}</span>
-                </div>
-              </div>
-            `;
-          }
-
+          
           card.innerHTML = `
-            <span class="rank-badge ${item.badgeClass}">${item.place} Place</span>
-            <div class="podium-avatar ${item.avatarClass}">${displayName}</div>
-            <div class="podium-username" title="${item.username}">${item.username}</div>
-            <div class="podium-points">${pointsVal} ${unit}</div>
-            ${breakdownHtml}
+            <div class="podium-rank">${item.rank}</div>
+            <div class="profile-avatar" style="${item.rank === 1 ? 'border: 3px solid #ffd700;' : ''}">${item.avatar}</div>
+            <h3 class="podium-name">${displayName}</h3>
+            <div class="podium-score">${pointsVal} <small>pts</small></div>
           `;
           podiumContainer.appendChild(card);
         });
 
         if (activeTab === 'championship') {
-          if (isAdmin) {
-            listHead.innerHTML = `
-              <tr>
-                <th style="width: 8%;">Rank</th>
-                <th>Competitor</th>
-                <th style="text-align: center; width: 12%;">Days Played</th>
-                <th style="text-align: center; width: 12%;">Quiz (40%)</th>
-                <th style="text-align: center; width: 12%;">Penalty (25%)</th>
-                <th style="text-align: center; width: 12%;">Juggling (25%)</th>
-                <th style="text-align: center; width: 12%;">Soccer (10%)</th>
-                <th style="text-align: right; width: 15%;">Total Points</th>
-              </tr>
-            `;
-          } else {
-            listHead.innerHTML = `
-              <tr>
-                <th style="width: 10%;">Rank</th>
-                <th>Competitor</th>
-                <th style="text-align: center; width: 30%;">Days Played</th>
-                <th style="text-align: right; width: 30%;">Total Points</th>
-              </tr>
-            `;
-          }
+          listHead.innerHTML = `
+            <tr>
+              <th style="width: 8%;">Rank</th>
+              <th>Competitor</th>
+              <th style="text-align: center; width: 15%;">Days Played</th>
+              <th style="text-align: right; width: 15%;">Rapid Fire Points</th>
+            </tr>
+          `;
         } else {
-          if (isAdmin) {
-            listHead.innerHTML = `
-              <tr>
-                <th style="width: 8%;">Rank</th>
-                <th>Competitor</th>
-                <th style="text-align: center; width: 15%;">Quiz (40%)</th>
-                <th style="text-align: center; width: 15%;">Penalty (25%)</th>
-                <th style="text-align: center; width: 15%;">Juggling (25%)</th>
-                <th style="text-align: center; width: 15%;">Soccer (10%)</th>
-                <th style="text-align: right; width: 20%;">Daily Total</th>
-              </tr>
-            `;
-          } else {
-            listHead.innerHTML = `
-              <tr>
-                <th style="width: 10%;">Rank</th>
-                <th>Competitor</th>
-                <th style="text-align: right; width: 40%;">Daily Total</th>
-              </tr>
-            `;
-          }
+          listHead.innerHTML = `
+            <tr>
+              <th style="width: 10%;">Rank</th>
+              <th>Competitor</th>
+              <th style="text-align: right; width: 40%;">Rapid Fire Points</th>
+            </tr>
+          `;
         }
 
         listBody.innerHTML = '';
@@ -1587,63 +1525,28 @@ async function initWinnerPage() {
           }
 
           if (activeTab === 'championship') {
-            if (isAdmin) {
-              row.innerHTML = `
-                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
-                <td>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
-                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
-                  </div>
-                </td>
-                <td style="text-align: center; color: var(--text-muted); font-weight: 600;">${item.daysPlayed}</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.quizPoints} / 240</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.penaltyPoints} / 150</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.jugglingPoints} / 150</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.soccerPoints} / 60</td>
-                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
-              `;
-            } else {
-              row.innerHTML = `
-                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
-                <td>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
-                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
-                  </div>
-                </td>
-                <td style="text-align: center; color: var(--text-muted); font-weight: 600;">${item.daysPlayed}</td>
-                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
-              `;
-            }
+            row.innerHTML = `
+              <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+                  <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+                </div>
+              </td>
+              <td style="text-align: center; color: var(--text-muted); font-weight: 600;">${item.daysPlayed || 0}</td>
+              <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.overallPoints}</td>
+            `;
           } else {
-            if (isAdmin) {
-              row.innerHTML = `
-                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
-                <td>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
-                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
-                  </div>
-                </td>
-                <td style="text-align: center; color: var(--text-muted);">${item.quizNorm} %</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.penaltyNorm} %</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.jugglingNorm} %</td>
-                <td style="text-align: center; color: var(--text-muted);">${item.soccerNorm} %</td>
-                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.dailyTotal}</td>
-              `;
-            } else {
-              row.innerHTML = `
-                <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
-                <td>
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
-                    <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
-                  </div>
-                </td>
-                <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.dailyTotal}</td>
-              `;
-            }
+            row.innerHTML = `
+              <td style="font-weight: 700; color: ${item.rank <= 3 ? 'var(--accent-green)' : 'var(--text-muted)'};">${rankHtml}</td>
+              <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div class="profile-avatar" style="width: 28px; height: 28px; font-size: 0.8rem; background: ${item.rank === 1 ? 'linear-gradient(135deg, #ffd700 0%, #ffa000 100%)' : item.rank === 2 ? '#cbd5e1' : item.rank === 3 ? '#cd7f32' : 'linear-gradient(135deg, var(--accent-green) 0%, #009688 100%)'}; color: ${item.rank === 1 || item.rank === 3 ? 'var(--text-dark)' : 'inherit'}">${item.avatar}</div>
+                  <span style="font-weight: 600;">${item.username} ${isSelf ? '<small style="color:var(--accent-green); margin-left:4px;">(You)</small>' : ''}</span>
+                </div>
+              </td>
+              <td style="text-align: right; font-weight: 800; color: var(--accent-green); font-size: 0.95rem;">${item.dailyTotal}</td>
+            `;
           }
           listBody.appendChild(row);
         });
@@ -2040,7 +1943,7 @@ async function initGamesPage() {
         <span>Status: ${status.quiz.completedToday ? 'Completed' : 'Available'}</span>
       </div>
     `;
-    grid.appendChild(quizCard);
+    // grid.appendChild(quizCard);
 
     // 2. Juggling Pro (Priority 2)
     const jugglingLocked = status.juggling.attempts >= status.juggling.limit && !isAdmin;
@@ -2089,7 +1992,7 @@ async function initGamesPage() {
         <span>Best Score: ${status.juggling.bestScore} bounces</span>
       </div>
     `;
-    grid.appendChild(jugglingCard);
+    // grid.appendChild(jugglingCard);
 
     // 3. Penalty Challenge (Priority 3)
     const penaltyLocked = status.penalty.attempts >= status.penalty.limit && !isAdmin;
@@ -2138,7 +2041,7 @@ async function initGamesPage() {
         <span>Best Score: ${status.penalty.bestScore} goals</span>
       </div>
     `;
-    grid.appendChild(penaltyCard);
+    // grid.appendChild(penaltyCard);
 
     // 4. Mini Soccer Showdown (Priority 4)
     const soccerLocked = status.soccer.attempts >= status.soccer.limit && !isAdmin;
@@ -2187,7 +2090,7 @@ async function initGamesPage() {
         <span>Best Score: ${status.soccer.bestScore} goals</span>
       </div>
     `;
-    grid.appendChild(gameCard);
+    // grid.appendChild(gameCard);
 
     // Show only the 3 game tiles to make a single row (0 matches)
     const firstRowMatches = matchesList.slice(0, 0);
@@ -2265,6 +2168,45 @@ async function initGamesPage() {
       </div>
     `;
     grid.appendChild(rpCard);
+
+    const rapidFireLocked = status.rapidFire && status.rapidFire.completedToday && !isAdmin;
+    const rapidFireCard = document.createElement('div');
+    rapidFireCard.className = 'glass-card interactive-hover';
+    rapidFireCard.style.padding = '1.75rem';
+    if (rapidFireLocked) {
+      rapidFireCard.style.opacity = '0.6';
+      rapidFireCard.style.cursor = 'not-allowed';
+      rapidFireCard.classList.remove('interactive-hover');
+    } else {
+      rapidFireCard.style.cursor = 'pointer';
+    }
+    rapidFireCard.style.border = '1px solid var(--accent-green)';
+    rapidFireCard.style.display = 'flex';
+    rapidFireCard.style.flexDirection = 'column';
+    rapidFireCard.style.justifyContent = 'space-between';
+    rapidFireCard.addEventListener('click', () => {
+      if (rapidFireLocked) {
+        window.showToast("Rapid Fire is locked! You have already played today.", 'error');
+      } else {
+        window.location.href = 'rapid_fire.html';
+      }
+    });
+
+    rapidFireCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+        <span style="background: rgba(0, 230, 118, 0.2); color: var(--accent-green); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⏱️ Rapid Fire</span>
+        ${!rapidFireLocked ? '<span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>' : '<span style="font-size: 1.2rem;">🔒</span>'}
+      </div>
+      <div>
+        <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${rapidFireLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">Min to Win</h3>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; line-height: 1.3;">40 questions in 60 seconds.</p>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6);">
+          <span>Status: ${rapidFireLocked ? 'Completed' : 'Available'}</span>
+        </div>
+      </div>
+    `;
+    grid.appendChild(rapidFireCard);
+  
 
     container.appendChild(grid);
   }

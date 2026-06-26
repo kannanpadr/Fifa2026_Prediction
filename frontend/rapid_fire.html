@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rapid Fire Quiz - FIFA World Cup 2026 Portal</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: radial-gradient(circle at center, #0f1a30 0%, #070d19 100%);
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+
+    .game-layout {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .game-header {
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: var(--transition-smooth);
+    }
+
+    .back-btn:hover {
+      color: var(--accent-green);
+    }
+
+    .timer-container {
+      font-size: 3rem;
+      font-family: var(--font-display);
+      color: #ffd700;
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+      margin: 1rem 0;
+    }
+
+    .timer-pulse {
+      animation: pulse-red 1s infinite;
+      color: #ff5252;
+      text-shadow: 0 0 15px rgba(255, 82, 82, 0.6);
+    }
+
+    @keyframes pulse-red {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    .quiz-card {
+      padding: 2.5rem;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      margin-top: 1rem;
+      position: relative;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .quiz-progress-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--accent-green);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 0.5rem;
+    }
+
+    .question-text {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
+      line-height: 1.4;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    .option-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.1rem 1.5rem;
+      border-radius: 12px;
+      color: var(--text-main);
+      font-size: 1.05rem;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+    }
+
+    .option-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--accent-green);
+      transform: translateX(5px);
+    }
+
+    .option-btn.correct {
+      background: rgba(0, 230, 118, 0.2);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .option-btn.wrong {
+      background: rgba(239, 83, 80, 0.2);
+      border-color: #ef5350;
+      color: #ef5350;
+    }
+
+    .score-breakdown {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 1.1rem;
+    }
+
+    .score-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .score-val {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="game-layout">
+    <div class="game-header">
+      <a href="games.html" class="back-btn" id="backBtn">◀ Back to Games</a>
+      <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700;">⚡ MIN TO WIN</div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen" class="quiz-card">
+      <span style="font-size: 3.5rem; display: block; margin-bottom: 1rem; text-shadow: 0 0 20px rgba(255,215,0,0.5);">⏱️</span>
+      <h2 style="font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 1rem;">Rapid Fire Quiz</h2>
+      <p style="color: var(--text-muted); margin-bottom: 2rem; line-height: 1.6;">
+        You have exactly <strong>60 seconds</strong> to answer up to <strong>40 questions</strong>.<br><br>
+        <span style="color: var(--accent-green);">+5 points</span> for correct answers<br>
+        <span style="color: #ff5252;">-3 points</span> for incorrect answers<br>
+        <span style="color: #ffb74d;">-1 point</span> for unattempted questions<br><br>
+        Think fast. Click faster.
+      </p>
+      <button class="btn btn-primary btn-lg" id="startBtn" style="width: 100%;">START CHALLENGE</button>
+      <div id="loadingMsg" style="display: none; margin-top: 1rem; color: var(--accent-green);">Loading questions...</div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="quiz-card" style="display: none;">
+      <div class="timer-container" id="timerDisplay">60.0</div>
+      
+      <div class="quiz-progress-bar">
+        <span id="questionCounter">Q: 1 / 40</span>
+        <span id="scoreTracker" style="color: var(--text-main);">Score: 0</span>
+      </div>
+
+      <div class="question-text" id="questionText">Loading...</div>
+      
+      <div class="options-grid" id="optionsContainer">
+        <!-- Options generated via JS -->
+      </div>
+      <button id="skipBtn" style="margin-top: 1.5rem; width: 100%; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 12px; border-radius: 8px; font-family: var(--font-main); font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="handleSkip()">Skip Question</button>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="resultScreen" class="quiz-card" style="display: none;">
+      <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">🏁</span>
+      <h2 style="font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.5rem; color: var(--accent-green);">Time's Up!</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Here is your Rapid Fire breakdown:</p>
+      
+      <div class="score-breakdown">
+        <div class="score-item" style="color: var(--accent-green);">
+          <span class="score-val" id="resCorrect">0</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase;">Correct (+5)</span>
+        </div>
+        <div class="score-item" style="color: #ef5350;">
+          <span class="score-val" id="resIncorrect">0</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase;">Incorrect (-3)</span>
+        </div>
+        <div class="score-item" style="color: #ffb74d;">
+          <span class="score-val" id="resUnattempted">0</span>
+          <span style="font-size: 0.8rem; text-transform: uppercase;">Unattempted (-1)</span>
+        </div>
+      </div>
+
+      <div style="background: rgba(0, 230, 118, 0.1); border: 1px solid var(--accent-green); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+        <span style="display: block; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Total Score</span>
+        <span style="font-size: 3rem; font-family: var(--font-display); font-weight: 800; color: var(--accent-green);" id="resTotalScore">0</span>
+      </div>
+
+      <button class="btn btn-primary btn-lg" onclick="window.location.href='games.html'" style="width: 100%;">RETURN TO GAMES</button>
+    </div>
+
+  </div>
+
+  <script>
+    // --- AUTHENTICATION ---
+    const currentUser = JSON.parse(localStorage.getItem('fifa_user') || 'null');
+    if (!currentUser || !currentUser.token) {
+      window.location.href = 'login.html';
+    }
+
+    // --- STATE ---
+    let questions = [];
+    let currentQIndex = 0;
+    
+    let correctCount = 0;
+    let incorrectCount = 0;
+    let unattemptedCount = 40;
+    let currentScore = 0;
+
+    let timeLeft = 60.0;
+    let timerInterval = null;
+    let isSubmitting = false;
+
+    // --- DOM ELEMENTS ---
+    const startScreen = document.getElementById('startScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const resultScreen = document.getElementById('resultScreen');
+    
+    const backBtn = document.getElementById('backBtn');
+    const startBtn = document.getElementById('startBtn');
+    const loadingMsg = document.getElementById('loadingMsg');
+    
+    const timerDisplay = document.getElementById('timerDisplay');
+    const questionCounter = document.getElementById('questionCounter');
+    const scoreTracker = document.getElementById('scoreTracker');
+    const questionText = document.getElementById('questionText');
+    const optionsContainer = document.getElementById('optionsContainer');
+
+    // --- LOGIC ---
+    startBtn.addEventListener('click', async () => {
+      startBtn.style.display = 'none';
+      loadingMsg.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/rapid-fire/daily', {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` }
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          if (data.completedToday && currentUser.role !== 'admin') {
+            alert('You have already played the Rapid Fire quiz today!');
+            window.location.href = 'games.html';
+            return;
+          }
+          
+          questions = data.questions;
+          unattemptedCount = questions.length;
+          startGame();
+        } else {
+          alert(data.message || 'Error loading questions');
+          startBtn.style.display = 'block';
+          loadingMsg.style.display = 'none';
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to connect to server.');
+        startBtn.style.display = 'block';
+        loadingMsg.style.display = 'none';
+      }
+    });
+
+    function startGame() {
+      history.pushState({ gameActive: true }, '', window.location.href);
+      startScreen.style.display = 'none';
+      gameScreen.style.display = 'block';
+      
+      if (backBtn) {
+        backBtn.style.pointerEvents = 'none';
+        backBtn.style.opacity = '0.5';
+      }
+      
+      renderQuestion();
+      
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        
+        if (timeLeft <= 10 && !timerDisplay.classList.contains('timer-pulse')) {
+          timerDisplay.classList.add('timer-pulse');
+        }
+
+        if (timeLeft <= 0) {
+          timeLeft = 0;
+          timerDisplay.textContent = '0.0';
+          endGame();
+        } else {
+          timerDisplay.textContent = timeLeft.toFixed(1);
+        }
+      }, 100);
+    }
+
+    function renderQuestion() {
+      if (currentQIndex >= questions.length) {
+        endGame();
+        return;
+      }
+
+      const q = questions[currentQIndex];
+      questionCounter.textContent = `Q: ${currentQIndex + 1} / ${questions.length}`;
+      questionText.textContent = q.q;
+      
+      optionsContainer.innerHTML = '';
+      
+      q.o.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = opt;
+        btn.onclick = () => handleAnswer(btn, idx, q.a);
+        optionsContainer.appendChild(btn);
+      });
+
+      const skipBtn = document.getElementById('skipBtn');
+      if (skipBtn) skipBtn.style.pointerEvents = 'auto';
+    }
+
+    function handleSkip() {
+      const allBtns = optionsContainer.querySelectorAll('.option-btn');
+      allBtns.forEach(b => b.style.pointerEvents = 'none');
+      const skipBtn = document.getElementById('skipBtn');
+      if (skipBtn) skipBtn.style.pointerEvents = 'none';
+
+      setTimeout(() => {
+        currentQIndex++;
+        renderQuestion();
+      }, 200);
+    }
+
+    function handleAnswer(btn, selectedIdx, encodedAnswer) {
+      // Disable all buttons immediately
+      const allBtns = optionsContainer.querySelectorAll('.option-btn');
+      allBtns.forEach(b => b.style.pointerEvents = 'none');
+      const skipBtn = document.getElementById('skipBtn');
+      if (skipBtn) skipBtn.style.pointerEvents = 'none';
+
+      const correctStr = atob(encodedAnswer);
+      const isCorrect = (selectedIdx.toString() === correctStr);
+
+      unattemptedCount--;
+
+      if (isCorrect) {
+        btn.classList.add('correct');
+        correctCount++;
+        currentScore += 5;
+      } else {
+        btn.classList.add('wrong');
+        incorrectCount++;
+        currentScore -= 3;
+        
+        // Highlight correct
+        allBtns.forEach((b, idx) => {
+          if (idx.toString() === correctStr) {
+            b.classList.add('correct');
+          }
+        });
+      }
+
+      scoreTracker.textContent = `Score: ${currentScore}`;
+
+      setTimeout(() => {
+        currentQIndex++;
+        renderQuestion();
+      }, 400); // Quick transition
+    }
+
+    async function endGame() {
+      if (isSubmitting) return;
+      isSubmitting = true;
+      clearInterval(timerInterval);
+
+      gameScreen.style.display = 'none';
+
+      if (backBtn) {
+        backBtn.style.pointerEvents = 'auto';
+        backBtn.style.opacity = '1';
+      }
+      resultScreen.style.display = 'block';
+
+      // Update UI with calculated score
+      const finalScore = (correctCount * 5) - (incorrectCount * 3) - (unattemptedCount * 1);
+      
+      document.getElementById('resCorrect').textContent = correctCount;
+      document.getElementById('resIncorrect').textContent = incorrectCount;
+      document.getElementById('resUnattempted').textContent = unattemptedCount;
+      document.getElementById('resTotalScore').textContent = finalScore;
+
+      // Submit to backend
+      try {
+        await fetch('/api/rapid-fire/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.token}`
+          },
+          body: JSON.stringify({
+            correct: correctCount,
+            incorrect: incorrectCount,
+            unattempted: unattemptedCount
+          })
+        });
+      } catch (err) {
+        console.error('Failed to submit rapid fire score:', err);
+      }
+    }
+
+    window.addEventListener('popstate', (e) => {
+      if (timerInterval && !isSubmitting) {
+        alert("Your scores are stored. The game is locked for the day.");
+        endGame();
+      }
+    });
+  </script>
+</body>
+</html>

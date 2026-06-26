@@ -1402,6 +1402,8 @@ async function initWinnerPage() {
 
   if (!podiumContainer || !body) return;
 
+  const currentUser = window.getCurrentUser();
+
   let activeTab = 'championship';
 
   const today = new Date();

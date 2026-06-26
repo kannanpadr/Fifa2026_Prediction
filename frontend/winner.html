@@ -79,9 +79,26 @@
     }
 
     @media (max-width: 900px) {
-      .podium-1st { order: 1; height: auto; width: 100%; max-width: 300px; }
-      .podium-2nd { order: 2; height: auto; width: 100%; max-width: 300px; }
-      .podium-3rd { order: 3; height: auto; width: 100%; max-width: 300px; }
+      .podium-1st {
+        order: 1;
+        height: auto;
+        width: 100%;
+        max-width: 300px;
+      }
+
+      .podium-2nd {
+        order: 2;
+        height: auto;
+        width: 100%;
+        max-width: 300px;
+      }
+
+      .podium-3rd {
+        order: 3;
+        height: auto;
+        width: 100%;
+        max-width: 300px;
+      }
     }
 
     .podium-avatar {
@@ -170,9 +187,23 @@
       margin-bottom: 0.75rem;
     }
 
-    .badge-1st { background: rgba(255, 215, 0, 0.12); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.3); }
-    .badge-2nd { background: rgba(192, 192, 192, 0.12); color: #cbd5e1; border: 1px solid rgba(192, 192, 192, 0.3); }
-    .badge-3rd { background: rgba(205, 127, 50, 0.12); color: #cd7f32; border: 1px solid rgba(205, 127, 50, 0.3); }
+    .badge-1st {
+      background: rgba(255, 215, 0, 0.12);
+      color: #ffd700;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .badge-2nd {
+      background: rgba(192, 192, 192, 0.12);
+      color: #cbd5e1;
+      border: 1px solid rgba(192, 192, 192, 0.3);
+    }
+
+    .badge-3rd {
+      background: rgba(205, 127, 50, 0.12);
+      color: #cd7f32;
+      border: 1px solid rgba(205, 127, 50, 0.3);
+    }
 
     .podium-card.no-breakdown {
       height: auto !important;
@@ -213,7 +244,8 @@
             <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
             <li><a href="games.html" class="navbar-link" id="navGames"><span>🎮</span> Games</a></li>
             <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
-            <li id="navRealPenaltyAdminMenu" style="display: none;"><a href="admin_real_penalty.html" class="navbar-link">⚽ Real Penalty Admin</a></li>
+            <li id="navRealPenaltyAdminMenu" style="display: none;"><a href="admin_real_penalty.html"
+                class="navbar-link">⚽ Real Penalty Admin</a></li>
           </ul>
         </nav>
 
@@ -227,9 +259,11 @@
             <a href="leaderboard.html" class="dropdown-item" id="dropdownLeaderboard">📊 Prediction Leaderboard</a>
             <a href="winner.html" class="dropdown-item" id="dropdownWinner">👑 Games Leaderboard</a>
             <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
-            <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊 Player Predictions</a>
+            <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊
+              Player Predictions</a>
             <a href="#" class="dropdown-item" id="adminDownloadDbLink" style="display: none;">📥 Download DB (JSON)</a>
-            <a href="admin_real_penalty.html" class="dropdown-item" id="adminRealPenaltyLink" style="display: none;">? Real Penalty Admin</a>
+            <a href="admin_real_penalty.html" class="dropdown-item" id="adminRealPenaltyLink" style="display: none;">?
+              Real Penalty Admin</a>
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
             <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
           </div>
@@ -247,20 +281,28 @@
 
       <!-- Leaderboard Tabs -->
       <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 2rem;">
-        <button id="tabChampionship" class="btn" style="background: var(--accent-green); color: var(--text-dark); font-weight: 700; border-radius: 30px; padding: 0.6rem 1.5rem; border: none; cursor: pointer; transition: var(--transition-smooth); font-family: var(--font-display);">Championship Board</button>
-        <button id="tabDaily" class="btn" style="background: rgba(255,255,255,0.06); color: var(--text-muted); font-weight: 700; border-radius: 30px; padding: 0.6rem 1.5rem; border: 1px solid var(--border-color); cursor: pointer; transition: var(--transition-smooth); font-family: var(--font-display);">Daily Leaderboard</button>
+        <button id="tabChampionship" class="btn"
+          style="background: var(--accent-green); color: var(--text-dark); font-weight: 700; border-radius: 30px; padding: 0.6rem 1.5rem; border: none; cursor: pointer; transition: var(--transition-smooth); font-family: var(--font-display);">Championship
+          Board</button>
+        <button id="tabDaily" class="btn"
+          style="background: rgba(255,255,255,0.06); color: var(--text-muted); font-weight: 700; border-radius: 30px; padding: 0.6rem 1.5rem; border: 1px solid var(--border-color); cursor: pointer; transition: var(--transition-smooth); font-family: var(--font-display);">Daily
+          Leaderboard</button>
       </div>
 
       <!-- Daily Date Selector (Hidden by default) -->
-      <div id="dailySelectorContainer" style="display: none; justify-content: center; align-items: center; gap: 10px; margin-bottom: 2rem;">
-        <label for="dailyDateSelect" style="color: var(--text-muted); font-weight: 600; font-size: 0.9rem; font-family: var(--font-body);">Select Competition Day:</label>
-        <select id="dailyDateSelect" style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem 1rem; font-weight: 600; outline: none; cursor: pointer; font-family: var(--font-body); font-size: 0.9rem;">
-          <option value="2026-6-21">Day 1 (June 21, 2026)</option>
-          <option value="2026-6-22">Day 2 (June 22, 2026)</option>
-          <option value="2026-6-23">Day 3 (June 23, 2026)</option>
-          <option value="2026-6-24">Day 4 (June 24, 2026)</option>
-          <option value="2026-6-25">Day 5 (June 25, 2026)</option>
-          <option value="2026-6-26">Day 6 (June 26, 2026)</option>
+      <div id="dailySelectorContainer"
+        style="display: none; justify-content: center; align-items: center; gap: 10px; margin-bottom: 2rem;">
+        <label for="dailyDateSelect"
+          style="color: var(--text-muted); font-weight: 600; font-size: 0.9rem; font-family: var(--font-body);">Select
+          Competition Day:</label>
+        <select id="dailyDateSelect"
+          style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem 1rem; font-weight: 600; outline: none; cursor: pointer; font-family: var(--font-body); font-size: 0.9rem;">
+          <option value="2026-6-27">Day 1 (June 21, 2026)</option>
+          <option value="2026-6-28">Day 2 (June 22, 2026)</option>
+          <option value="2026-6-29">Day 3 (June 23, 2026)</option>
+          <option value="2026-6-30">Day 4 (June 24, 2026)</option>
+          <option value="2026-7-01">Day 5 (June 25, 2026)</option>
+          <option value="2026-7-02">Day 6 (June 26, 2026)</option>
         </select>
       </div>
 
@@ -272,7 +314,8 @@
 
       <!-- Overall Points List Section -->
       <div class="glass-card" style="padding: 1.75rem; border-radius: 16px;">
-        <h2 id="leaderboardTitle" style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; text-transform: uppercase; color: var(--accent-green); margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
+        <h2 id="leaderboardTitle"
+          style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; text-transform: uppercase; color: var(--accent-green); margin-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 8px;">
           <span>📊</span> Detailed Point Standings
         </h2>
         <div class="table-responsive">
@@ -287,7 +330,8 @@
             </thead>
             <tbody id="championsBody">
               <tr>
-                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading overall leaderboard rankings...</td>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">Loading overall
+                  leaderboard rankings...</td>
               </tr>
             </tbody>
           </table>
@@ -322,7 +366,7 @@
     <p>© 2026 • Designed by Kannan</p>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=1782476975665"></script>
 </body>
 
 </html>

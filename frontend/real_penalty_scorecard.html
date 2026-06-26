@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real Penalty Scorecard - FIFA World Cup 2026</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .scorecard-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .scorecard-table th, .scorecard-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); color: white; }
+    .scorecard-table th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem; }
+    .scorecard-table tr:hover { background: rgba(255,255,255,0.05); }
+    .medal { font-size: 1.5rem; margin-right: 0.5rem; }
+  </style>
+</head>
+<body class="bg-portal animate-fade-in">
+  <div class="app-container">
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+        </div>
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link"><span>🏠</span> Dashboard</a></li>
+            <li><a href="games.html" class="navbar-link active"><span>🎮</span> Games</a></li>
+            <li id="navRealPenaltyAdminMenu" style="display: none;"><a href="admin_real_penalty.html" class="navbar-link">⚽ Real Penalty Admin</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <h1 class="page-title">Real Penalty Shootout Standings</h1>
+      <p class="page-subtitle">Current leaderboard for the physical penalty shootout event.</p>
+
+      <div class="glass-card" style="margin-top: 2rem; padding: 2rem;">
+        <h2 class="card-title">Easy Level</h2>
+        <table class="scorecard-table" id="easyTable">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Total Score</th>
+              <th>Shots Breakdown</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" style="text-align: center;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="glass-card" style="margin-top: 2rem; padding: 2rem;">
+        <h2 class="card-title">Hard Level</h2>
+        <table class="scorecard-table" id="hardTable">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Total Score</th>
+              <th>Shots Breakdown</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" style="text-align: center;">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      initRealPenaltyScorecard();
+    });
+  </script>
+</body>
+</html>

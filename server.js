@@ -153,6 +153,20 @@ async function seedAdmin() {
     } else {
       console.log('ℹ️ Admin user already exists.');
     }
+
+    const scorerExists = await User.findOne({ role: 'scorer' });
+    if (!scorerExists) {
+      console.log('🌱 No scorer user found. Seeding default scorer user...');
+      const pinHash = await bcrypt.hash('123456', 10);
+      const defaultScorer = new User({
+        username: 'scorer',
+        phone: 'scorer_123',
+        pinHash: pinHash,
+        role: 'scorer'
+      });
+      await defaultScorer.save();
+      console.log('✅ Default scorer user created. Username: scorer, PIN: 123456');
+    }
   } catch (err) {
     console.error('❌ Error seeding admin user:', err);
   }
@@ -177,6 +191,7 @@ const PenaltyAttempt = require('./models/PenaltyAttempt');
 const JugglingAttempt = require('./models/JugglingAttempt');
 const SoccerAttempt = require('./models/SoccerAttempt');
 const DailyScore = require('./models/DailyScore');
+const RealPenaltyScore = require('./models/RealPenaltyScore');
 const questionsPool = require('./data/questionsPool');
 
 // Data will be fetched from MongoDB via Mongoose models.
@@ -1948,6 +1963,49 @@ app.get('/api/db/status', async (req, res) => {
   }
 
   return res.json(status);
+});
+
+// --- REAL PENALTY SHOOTOUT (ADMIN) ---
+app.get('/api/real-penalty/users', async (req, res) => {
+  try {
+    const users = await User.find({ status: 'active', role: 'user' }).select('username -_id');
+    res.json({ success: true, users: users.map(u => u.username) });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching active users" });
+  }
+});
+
+app.post('/api/real-penalty/score', async (req, res) => {
+  const { username, level, shots, isTieBreaker } = req.body;
+  if (!username || !level || !shots || !Array.isArray(shots)) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  const totalScore = shots.reduce((a, b) => a + Number(b), 0);
+
+  try {
+    const filter = { username, level };
+    const update = {
+      shots: shots.map(Number),
+      totalScore,
+      isTieBreaker: Boolean(isTieBreaker)
+    };
+    
+    const newScore = await RealPenaltyScore.findOneAndUpdate(filter, update, { new: true, upsert: true });
+    res.json({ success: true, message: "Score saved successfully", score: newScore });
+  } catch (err) {
+    console.error("Error saving real penalty score:", err);
+    res.status(500).json({ success: false, message: "Server error saving score" });
+  }
+});
+
+app.get('/api/real-penalty/leaderboard', async (req, res) => {
+  try {
+    const scores = await RealPenaltyScore.find().sort({ totalScore: -1, createdAt: 1 });
+    res.json({ success: true, scores });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching leaderboard" });
+  }
 });
 
 // Start Server

@@ -324,10 +324,15 @@ app.get('/api/rapid-fire/daily', async (req, res) => {
 
     const dateStr = getTodayDateStr();
 
-    // Check if user has already completed the rapid fire quiz today
+    // Check if user has already started or completed the rapid fire quiz today
     const existing = await RapidFireSubmission.findOne({ username: sessionUser.username, dateStr });
     if (existing && sessionUser.role !== 'admin') {
-      return res.json({ success: true, completedToday: true, score: existing.score, correct: existing.correct, incorrect: existing.incorrect, unattempted: existing.unattempted });
+      if (existing.status === 'completed') {
+        return res.json({ success: true, completedToday: true, score: existing.score, correct: existing.correct, incorrect: existing.incorrect, unattempted: existing.unattempted });
+      } else {
+        // User already fetched questions but didn't finish properly (closed browser)
+        return res.json({ success: true, completedToday: true, score: 0, correct: 0, incorrect: 0, unattempted: 40, abandoned: true });
+      }
     }
 
     // Flatten all questions from the pool
@@ -377,6 +382,20 @@ app.get('/api/rapid-fire/daily', async (req, res) => {
       };
     });
 
+    // Lock the user out by creating a 'started' entry (if not admin)
+    if (sessionUser.role !== 'admin') {
+      const startedSubmission = new RapidFireSubmission({
+        username: sessionUser.username,
+        dateStr,
+        score: 0,
+        correct: 0,
+        incorrect: 0,
+        unattempted: 40,
+        status: 'started'
+      });
+      await startedSubmission.save();
+    }
+
     return res.json({ success: true, completedToday: false, questions: clientQuestions });
   } catch (err) {
     console.error(err);
@@ -410,22 +429,43 @@ app.post('/api/rapid-fire/submit', async (req, res) => {
 
     if (sessionUser.role !== 'admin') {
       const existing = await RapidFireSubmission.findOne({ username: sessionUser.username, dateStr });
-      if (existing) {
+      if (existing && existing.status === 'completed') {
         return res.status(409).json({ success: false, message: "You have already played Rapid Fire today!" });
+      }
+
+      if (existing && existing.status === 'started') {
+        existing.score = score;
+        existing.correct = correct;
+        existing.incorrect = incorrect;
+        existing.unattempted = unattempted;
+        existing.status = 'completed';
+        await existing.save();
+      } else {
+        // Fallback for safety
+        const submission = new RapidFireSubmission({
+          username: sessionUser.username,
+          dateStr,
+          score,
+          correct,
+          incorrect,
+          unattempted,
+          status: 'completed'
+        });
+        await submission.save();
       }
     } else {
       await RapidFireSubmission.deleteOne({ username: sessionUser.username, dateStr });
+      const submission = new RapidFireSubmission({
+        username: sessionUser.username,
+        dateStr,
+        score,
+        correct,
+        incorrect,
+        unattempted,
+        status: 'completed'
+      });
+      await submission.save();
     }
-
-    const submission = new RapidFireSubmission({
-      username: sessionUser.username,
-      dateStr,
-      score,
-      correct,
-      incorrect,
-      unattempted
-    });
-    await submission.save();
 
     return res.json({ success: true, message: "Rapid Fire completed!", score });
   } catch (err) {
@@ -1478,9 +1518,9 @@ app.get('/api/games/overall-leaderboard', async (req, res) => {
     const users = await User.find({ role: 'user', status: { $ne: 'deleted' } });
     const userNames = users.map(u => u.username.trim());
 
-    const week2Dates = ['2026-6-21', '2026-6-22', '2026-6-23', '2026-6-24', '2026-6-25', '2026-6-26'];
+    const competitionDates = ['2026-6-28', '2026-6-29', '2026-6-30'];
     const dailyScores = await RapidFireSubmission.aggregate([
-      { $match: { username: { $in: userNames }, dateStr: { $in: week2Dates } } },
+      { $match: { username: { $in: userNames }, dateStr: { $in: competitionDates } } },
       {
         $group: {
           _id: "$username",

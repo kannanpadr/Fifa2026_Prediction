@@ -58,9 +58,17 @@
     }
 
     @keyframes pulse-red {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.1);
+      }
+
+      100% {
+        transform: scale(1);
+      }
     }
 
     .quiz-card {
@@ -165,42 +173,48 @@
 
     <!-- Start Screen -->
     <div id="startScreen" class="quiz-card">
-      <span style="font-size: 3.5rem; display: block; margin-bottom: 1rem; text-shadow: 0 0 20px rgba(255,215,0,0.5);">⏱️</span>
+      <span
+        style="font-size: 3.5rem; display: block; margin-bottom: 1rem; text-shadow: 0 0 20px rgba(255,215,0,0.5);">⏱️</span>
       <h2 style="font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 1rem;">Rapid Fire Quiz</h2>
       <p style="color: var(--text-muted); margin-bottom: 2rem; line-height: 1.6;">
-        You have exactly <strong>60 seconds</strong> to answer up to <strong>40 questions</strong>.<br><br>
+        You have exactly <strong>100 seconds</strong> to answer up to <strong>40 questions</strong>.<br><br>
         <span style="color: var(--accent-green);">+5 points</span> for correct answers<br>
-        <span style="color: #ff5252;">-3 points</span> for incorrect answers<br>
-        <span style="color: #ffb74d;">-1 point</span> for unattempted questions<br><br>
+        <span style="color: #ff5252;">-2 points</span> for incorrect answers<br>
+        <span style="color: #ffb74d;">-0.5 points</span> for unattempted questions<br><br>
         Think fast. Click faster.
       </p>
       <button class="btn btn-primary btn-lg" id="startBtn" style="width: 100%;">START CHALLENGE</button>
-      <div id="loadingMsg" style="display: none; margin-top: 1rem; color: var(--accent-green);">Loading questions...</div>
+      <div id="loadingMsg" style="display: none; margin-top: 1rem; color: var(--accent-green);">Loading questions...
+      </div>
     </div>
 
     <!-- Game Screen -->
     <div id="gameScreen" class="quiz-card" style="display: none;">
-      <div class="timer-container" id="timerDisplay">60.0</div>
-      
+      <div class="timer-container" id="timerDisplay">100.0</div>
+
       <div class="quiz-progress-bar">
         <span id="questionCounter">Q: 1 / 40</span>
         <span id="scoreTracker" style="color: var(--text-main);">Score: 0</span>
       </div>
 
       <div class="question-text" id="questionText">Loading...</div>
-      
+
       <div class="options-grid" id="optionsContainer">
         <!-- Options generated via JS -->
       </div>
-      <button id="skipBtn" style="margin-top: 1.5rem; width: 100%; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 12px; border-radius: 8px; font-family: var(--font-main); font-weight: 600; cursor: pointer; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="handleSkip()">Skip Question</button>
+      <button id="skipBtn"
+        style="margin-top: 1.5rem; width: 100%; background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); padding: 12px; border-radius: 8px; font-family: var(--font-main); font-weight: 600; cursor: pointer; transition: all 0.3s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'"
+        onclick="handleSkip()">Skip Question</button>
     </div>
 
     <!-- Result Screen -->
     <div id="resultScreen" class="quiz-card" style="display: none;">
       <span style="font-size: 4rem; display: block; margin-bottom: 1rem;">🏁</span>
-      <h2 style="font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.5rem; color: var(--accent-green);">Time's Up!</h2>
+      <h2 style="font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.5rem; color: var(--accent-green);">
+        Time's Up!</h2>
       <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Here is your Rapid Fire breakdown:</p>
-      
+
       <div class="score-breakdown">
         <div class="score-item" style="color: var(--accent-green);">
           <span class="score-val" id="resCorrect">0</span>
@@ -216,12 +230,17 @@
         </div>
       </div>
 
-      <div style="background: rgba(0, 230, 118, 0.1); border: 1px solid var(--accent-green); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
-        <span style="display: block; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Total Score</span>
-        <span style="font-size: 3rem; font-family: var(--font-display); font-weight: 800; color: var(--accent-green);" id="resTotalScore">0</span>
+      <div
+        style="background: rgba(0, 230, 118, 0.1); border: 1px solid var(--accent-green); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem;">
+        <span
+          style="display: block; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Total
+          Score</span>
+        <span style="font-size: 3rem; font-family: var(--font-display); font-weight: 800; color: var(--accent-green);"
+          id="resTotalScore">0</span>
       </div>
 
-      <button class="btn btn-primary btn-lg" onclick="window.location.href='games.html'" style="width: 100%;">RETURN TO GAMES</button>
+      <button class="btn btn-primary btn-lg" onclick="window.location.href='games.html'" style="width: 100%;">RETURN TO
+        GAMES</button>
     </div>
 
   </div>
@@ -236,7 +255,7 @@
     // --- STATE ---
     let questions = [];
     let currentQIndex = 0;
-    
+
     let correctCount = 0;
     let incorrectCount = 0;
     let unattemptedCount = 40;
@@ -250,11 +269,11 @@
     const startScreen = document.getElementById('startScreen');
     const gameScreen = document.getElementById('gameScreen');
     const resultScreen = document.getElementById('resultScreen');
-    
+
     const backBtn = document.getElementById('backBtn');
     const startBtn = document.getElementById('startBtn');
     const loadingMsg = document.getElementById('loadingMsg');
-    
+
     const timerDisplay = document.getElementById('timerDisplay');
     const questionCounter = document.getElementById('questionCounter');
     const scoreTracker = document.getElementById('scoreTracker');
@@ -271,14 +290,18 @@
           headers: { 'Authorization': `Bearer ${currentUser.token}` }
         });
         const data = await res.json();
-        
+
         if (data.success) {
           if (data.completedToday && currentUser.role !== 'admin') {
-            alert('You have already played the Rapid Fire quiz today!');
+            if (data.abandoned) {
+              alert('You already started the Rapid Fire quiz earlier today but did not complete it. You cannot restart.');
+            } else {
+              alert('You have already played the Rapid Fire quiz today!');
+            }
             window.location.href = 'games.html';
             return;
           }
-          
+
           questions = data.questions;
           unattemptedCount = questions.length;
           startGame();
@@ -299,17 +322,17 @@
       history.pushState({ gameActive: true }, '', window.location.href);
       startScreen.style.display = 'none';
       gameScreen.style.display = 'block';
-      
+
       if (backBtn) {
         backBtn.style.pointerEvents = 'none';
         backBtn.style.opacity = '0.5';
       }
-      
+
       renderQuestion();
-      
+
       timerInterval = setInterval(() => {
         timeLeft -= 0.1;
-        
+
         if (timeLeft <= 10 && !timerDisplay.classList.contains('timer-pulse')) {
           timerDisplay.classList.add('timer-pulse');
         }
@@ -333,9 +356,9 @@
       const q = questions[currentQIndex];
       questionCounter.textContent = `Q: ${currentQIndex + 1} / ${questions.length}`;
       questionText.textContent = q.q;
-      
+
       optionsContainer.innerHTML = '';
-      
+
       q.o.forEach((opt, idx) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
@@ -380,7 +403,7 @@
         btn.classList.add('wrong');
         incorrectCount++;
         currentScore -= 2;
-        
+
         // Highlight correct
         allBtns.forEach((b, idx) => {
           if (idx.toString() === correctStr) {
@@ -412,7 +435,7 @@
 
       // Update UI with calculated score
       const finalScore = (correctCount * 5) - (incorrectCount * 2) - (unattemptedCount * 0.5);
-      
+
       document.getElementById('resCorrect').textContent = correctCount;
       document.getElementById('resIncorrect').textContent = incorrectCount;
       document.getElementById('resUnattempted').textContent = unattemptedCount;
@@ -445,4 +468,5 @@
     });
   </script>
 </body>
+
 </html>

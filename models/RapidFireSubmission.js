@@ -7,6 +7,7 @@ const rapidFireSubmissionSchema = new mongoose.Schema({
   correct: { type: Number, required: true },
   incorrect: { type: Number, required: true },
   unattempted: { type: Number, required: true },
+  status: { type: String, default: 'completed' },
   createdAt: { type: Date, default: Date.now }
 });
 

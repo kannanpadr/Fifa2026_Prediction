@@ -910,6 +910,34 @@ h1.page-title {
   padding-bottom: 0.5rem;
 }
 
+/* Penalty Winner Radio Toggle Styles */
+.pen-winner-radio {
+  display: none;
+}
+
+.pen-winner-label {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  user-select: none;
+  font-size: 0.85rem;
+}
+
+.pen-winner-label:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pen-winner-radio:checked + .pen-winner-label {
+  background: var(--accent-green);
+  color: #000;
+  border-color: var(--accent-green);
+  font-weight: 700;
+}
+
 .predict-body {
   display: flex;
   justify-content: space-between;

@@ -1111,12 +1111,15 @@ async function initPredictionPage() {
     }
 
     upcomingList.forEach(match => {
-      const pred = pagePredictions[match.id] || { team1Score: 0, team2Score: 0 };
+      const pred = pagePredictions[match.id] || { team1Score: 0, team2Score: 0, penaltyWinner: null };
 
       // Initialize internal store for score inputs
       if (!pagePredictions[match.id]) {
         pagePredictions[match.id] = pred;
       }
+      
+      const isKnockout = match.group.length > 1;
+      const groupText = isKnockout ? match.group : `Group ${match.group}`;
 
       const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;
       const flag2Url = `https://flagcdn.com/24x18/${match.team2Code}.png`;
@@ -1143,7 +1146,7 @@ async function initPredictionPage() {
       card.className = 'match-predict-card';
       card.innerHTML = `
         <div class="predict-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Group ${match.group} • ${match.venue}</span>
+          <span>${groupText} • ${match.venue}</span>
           <div style="display: flex; align-items: center; gap: 8px;">
             <span>Deadline: ${match.date} | ${match.time}</span>
             ${badgeHTML}
@@ -1176,6 +1179,18 @@ async function initPredictionPage() {
             <span class="predict-team-name">${match.team2}</span>
           </div>
         </div>
+        ${isKnockout ? `
+        <div class="penalty-winner-section" id="pen-win-sec-${match.id}" style="display: ${pred.team1Score === pred.team2Score ? 'block' : 'none'}; padding: 10px; margin-top: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; text-align: center;">
+          <p style="margin-bottom: 8px; font-size: 0.9rem;"><strong>Penalty Shootout Winner:</strong></p>
+          <div style="display: flex; justify-content: center; gap: 15px;">
+            <input type="radio" id="pen_${match.id}_t1" name="pen_winner_${match.id}" value="team1" ${pred.penaltyWinner === 'team1' ? 'checked' : ''} class="pen-winner-radio" data-match-id="${match.id}" ${isDisabled}>
+            <label for="pen_${match.id}_t1" class="pen-winner-label">${match.team1}</label>
+            
+            <input type="radio" id="pen_${match.id}_t2" name="pen_winner_${match.id}" value="team2" ${pred.penaltyWinner === 'team2' ? 'checked' : ''} class="pen-winner-radio" data-match-id="${match.id}" ${isDisabled}>
+            <label for="pen_${match.id}_t2" class="pen-winner-label">${match.team2}</label>
+          </div>
+        </div>
+        ` : ''}
       `;
       predictionMatchesContainer.appendChild(card);
     });
@@ -1216,16 +1231,40 @@ async function initPredictionPage() {
         updateLocalPredictionStore(matchId, team, val);
       });
     });
+
+    // Add Penalty Winner listeners
+    const penRadios = predictionMatchesContainer.querySelectorAll('.pen-winner-radio');
+    penRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const matchId = e.target.getAttribute('data-match-id');
+        if (!pagePredictions[matchId]) {
+          pagePredictions[matchId] = { team1Score: 0, team2Score: 0, penaltyWinner: null };
+        }
+        pagePredictions[matchId].penaltyWinner = e.target.value;
+      });
+    });
   }
 
   function updateLocalPredictionStore(matchId, team, value) {
     if (!pagePredictions[matchId]) {
-      pagePredictions[matchId] = { team1Score: 0, team2Score: 0 };
+      pagePredictions[matchId] = { team1Score: 0, team2Score: 0, penaltyWinner: null };
     }
     if (team === "1") {
       pagePredictions[matchId].team1Score = value;
     } else {
       pagePredictions[matchId].team2Score = value;
+    }
+    const pred = pagePredictions[matchId];
+    const penSec = document.getElementById(`pen-win-sec-${matchId}`);
+    if (penSec) {
+      if (pred.team1Score === pred.team2Score) {
+        penSec.style.display = 'block';
+      } else {
+        penSec.style.display = 'none';
+        pred.penaltyWinner = null;
+        const radios = penSec.querySelectorAll('input[type="radio"]');
+        radios.forEach(r => r.checked = false);
+      }
     }
   }
 
@@ -1233,6 +1272,23 @@ async function initPredictionPage() {
   const submitPredictionsBtn = document.getElementById('submitPredictionsBtn');
   if (submitPredictionsBtn) {
     submitPredictionsBtn.addEventListener('click', async () => {
+      // Validate penaltyWinner only for open matches
+      const now = new Date().getTime();
+      for (const [matchIdStr, pred] of Object.entries(pagePredictions)) {
+        const m = allMatchesList.find(x => x.id === parseInt(matchIdStr));
+        if (m) {
+          const kickoff = new Date(m.date + ' ' + m.time + ' GMT+0530').getTime();
+          const isOpen = (now >= kickoff - 24 * 60 * 60 * 1000) && (now < kickoff);
+          if (!isOpen) continue;
+
+          const isKnockout = m.group.length > 1;
+          if (isKnockout && pred.team1Score === pred.team2Score && !pred.penaltyWinner) {
+            showToast(`Penalty winner is required for Knockout Match draw (${m.team1} vs ${m.team2})`, 'error');
+            return;
+          }
+        }
+      }
+
       try {
         const response = await fetch('/api/predictions', {
           method: 'POST',
@@ -1678,11 +1734,14 @@ async function initScoreUpdatePage() {
       const flag1Url = `https://flagcdn.com/24x18/${match.team1Code}.png`;
       const flag2Url = `https://flagcdn.com/24x18/${match.team2Code}.png`;
 
+      const isKnockout = match.group.length > 1;
+      const groupText = isKnockout ? match.group : `Group ${match.group}`;
+
       const card = document.createElement('div');
       card.className = 'match-predict-card admin-card';
       card.innerHTML = `
         <div class="predict-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Group ${match.group} • ${match.venue}</span>
+          <span>${groupText} • ${match.venue}</span>
           <span style="font-weight: 700; color: var(--accent-green);">${match.date} | ${match.time}</span>
         </div>
         <div class="predict-body">
@@ -1708,13 +1767,20 @@ async function initScoreUpdatePage() {
               </div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
-              <select class="status-select" data-match-id="${match.id}">
+            <div style="display: flex; align-items: center; gap: 10px; width: 100%; flex-wrap: wrap; justify-content: center;">
+              <select class="status-select" data-match-id="${match.id}" style="flex: 1; min-width: 90px;">
                 <option value="Upcoming" ${match.status === 'Upcoming' ? 'selected' : ''}>Upcoming</option>
                 <option value="Live" ${match.status === 'Live' ? 'selected' : ''}>Live</option>
                 <option value="Completed" ${match.status === 'Completed' ? 'selected' : ''}>Completed</option>
               </select>
-              <button class="btn btn-primary update-match-btn" data-match-id="${match.id}" type="button">Update</button>
+              ${isKnockout ? `
+              <select class="status-select admin-pen-winner" data-match-id="${match.id}" style="flex: 1; min-width: 90px;">
+                <option value="">No Pens</option>
+                <option value="team1" ${match.penaltyWinner === 'team1' ? 'selected' : ''}>${match.team1} (Pen)</option>
+                <option value="team2" ${match.penaltyWinner === 'team2' ? 'selected' : ''}>${match.team2} (Pen)</option>
+              </select>
+              ` : ''}
+              <button class="btn btn-primary update-match-btn" data-match-id="${match.id}" type="button" style="flex: 1; min-width: 90px;">Update</button>
             </div>
           </div>
 
@@ -1769,12 +1835,14 @@ async function initScoreUpdatePage() {
         const matchId = parseInt(btn.getAttribute('data-match-id'));
         const input1 = adminMatchesContainer.querySelector(`input[data-match-id="${matchId}"][data-team="1"]`);
         const input2 = adminMatchesContainer.querySelector(`input[data-match-id="${matchId}"][data-team="2"]`);
-        const statusSelect = adminMatchesContainer.querySelector(`select[data-match-id="${matchId}"]`);
+        const statusSelect = adminMatchesContainer.querySelector(`select.status-select[data-match-id="${matchId}"]`);
+        const penSelect = adminMatchesContainer.querySelector(`select.admin-pen-winner[data-match-id="${matchId}"]`);
 
         if (input1 && input2 && statusSelect) {
           const team1Score = parseInt(input1.value) || 0;
           const team2Score = parseInt(input2.value) || 0;
           const status = statusSelect.value;
+          const penaltyWinner = penSelect ? penSelect.value : null;
 
           try {
             const updateResponse = await fetch('/api/admin/matches/update', {
@@ -1789,7 +1857,8 @@ async function initScoreUpdatePage() {
                 matchId,
                 team1Score,
                 team2Score,
-                status
+                status,
+                penaltyWinner
               })
             });
 
@@ -2415,16 +2484,52 @@ async function initAdminPredictionsPage() {
       return { label: 'Pending', points: 0, badge: 'badge-pending' };
     }
 
-    if (pp1 === ap1 && pp2 === ap2) {
-      return { label: 'Exact Score', points: 5, badge: 'badge-exact' };
-    } else if (
-      (pp1 > pp2 && ap1 > ap2) ||
-      (pp1 < pp2 && ap1 < ap2) ||
-      (pp1 === pp2 && ap1 === ap2)
-    ) {
-      return { label: 'Correct Winner', points: 3, badge: 'badge-winner' };
+    const isKnockout = match.group.length > 1;
+    const apw = match.penaltyWinner;
+    const ppw = pred.penaltyWinner;
+
+    if (isKnockout) {
+      const isExactScore = (pp1 === ap1 && pp2 === ap2);
+      const isPredDraw = (pp1 === pp2);
+      const isActualDraw = (ap1 === ap2);
+      
+      const correctPenaltyWinner = (apw && ppw === apw);
+      const predictedNormalWinForA = (pp1 > pp2);
+      const actualNormalWinForA = (ap1 > ap2);
+      const predictedNormalWinForB = (pp1 < pp2);
+      const actualNormalWinForB = (ap1 < ap2);
+
+      if (!isActualDraw) {
+        if (isExactScore) {
+          return { label: 'Exact Score', points: 7, badge: 'badge-exact' };
+        } else if ((predictedNormalWinForA && actualNormalWinForA) || (predictedNormalWinForB && actualNormalWinForB)) {
+          return { label: 'Correct Winner', points: 3, badge: 'badge-winner' };
+        } else {
+          return { label: 'Wrong Outcome', points: 0, badge: 'badge-wrong' };
+        }
+      } else {
+        if (isExactScore && correctPenaltyWinner) {
+          return { label: 'Exact + Correct Pen', points: 10, badge: 'badge-exact' };
+        } else if (!isExactScore && correctPenaltyWinner) {
+          return { label: 'Correct Pen (Wrong Score)', points: 3, badge: 'badge-winner' };
+        } else if (isExactScore && !correctPenaltyWinner) {
+          return { label: 'Exact Score (Wrong Pen)', points: 3, badge: 'badge-exact' };
+        } else {
+          return { label: 'Wrong Outcome', points: 0, badge: 'badge-wrong' };
+        }
+      }
     } else {
-      return { label: 'Wrong Outcome', points: 0, badge: 'badge-wrong' };
+      if (pp1 === ap1 && pp2 === ap2) {
+        return { label: 'Exact Score', points: 5, badge: 'badge-exact' };
+      } else if (
+        (pp1 > pp2 && ap1 > ap2) ||
+        (pp1 < pp2 && ap1 < ap2) ||
+        (pp1 === pp2 && ap1 === ap2)
+      ) {
+        return { label: 'Correct Winner', points: 3, badge: 'badge-winner' };
+      } else {
+        return { label: 'Wrong Outcome', points: 0, badge: 'badge-wrong' };
+      }
     }
   };
 
@@ -2495,6 +2600,10 @@ async function initAdminPredictionsPage() {
       let actualScoreText = 'VS';
       if (match.status === 'Completed' || match.status === 'Live') {
         actualScoreText = `${match.team1Score} - ${match.team2Score}`;
+        if (match.penaltyWinner) {
+           const penTeam = match.penaltyWinner === 'team1' ? match.team1 : match.team2;
+           actualScoreText += `<br><span style="font-size:0.7rem; color:var(--accent-green);">(Pen: ${penTeam})</span>`;
+        }
       }
 
       row.innerHTML = `
@@ -2520,6 +2629,7 @@ async function initAdminPredictionsPage() {
         <td style="text-align: center; font-weight: 600;">${match.group}</td>
         <td style="text-align: center; font-weight: 700; color: var(--accent-green);">
           ${pred.team1Score} - ${pred.team2Score}
+          ${pred.penaltyWinner ? `<br><span style="font-size:0.7rem; color:var(--text-muted);">(Pen: ${pred.penaltyWinner === 'team1' ? match.team1 : match.team2})</span>` : ''}
         </td>
         <td style="text-align: center;">
           <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">

@@ -5,6 +5,7 @@ const predictionSchema = new mongoose.Schema({
   matchId: { type: Number, required: true },
   team1Score: { type: Number, required: true },
   team2Score: { type: Number, required: true },
+  penaltyWinner: { type: String, default: null },
   submittedAt: { type: Date, default: Date.now }
 });
 

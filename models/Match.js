@@ -12,7 +12,8 @@ const matchSchema = new mongoose.Schema({
   venue: String,
   status: String,
   team1Score: { type: Number, default: null },
-  team2Score: { type: Number, default: null }
+  team2Score: { type: Number, default: null },
+  penaltyWinner: { type: String, default: null }
 });
 
 module.exports = mongoose.model('Match', matchSchema);

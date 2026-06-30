@@ -692,7 +692,11 @@ app.get('/api/predictions/:username', async (req, res) => {
     // Convert to map of matchId -> scores
     const result = {};
     preds.forEach(p => {
-      result[p.matchId] = { team1Score: p.team1Score, team2Score: p.team2Score };
+      result[p.matchId] = { 
+        team1Score: p.team1Score, 
+        team2Score: p.team2Score,
+        penaltyWinner: p.penaltyWinner || null
+      };
     });
     res.json(result);
   } catch (err) {
@@ -776,10 +780,22 @@ app.post('/api/predictions', async (req, res) => {
         continue;
       }
 
+      let pWinner = null;
+      if (match.group.length > 1 && parseInt(scores.team1Score) === parseInt(scores.team2Score)) {
+        if (!scores.penaltyWinner) {
+          return res.status(400).json({ success: false, message: `Penalty winner is required for knockout match draw (Match ${matchId}).` });
+        }
+        pWinner = scores.penaltyWinner;
+      }
+
       ops.push({
         updateOne: {
           filter: { username: username.trim(), matchId: matchId },
-          update: { team1Score: parseInt(scores.team1Score), team2Score: parseInt(scores.team2Score) },
+          update: { 
+            team1Score: parseInt(scores.team1Score), 
+            team2Score: parseInt(scores.team2Score),
+            penaltyWinner: pWinner
+          },
           upsert: true
         }
       });
@@ -811,7 +827,8 @@ app.get('/api/leaderboard', async (req, res) => {
       }
       predMap[p.username][p.matchId] = {
         team1Score: p.team1Score,
-        team2Score: p.team2Score
+        team2Score: p.team2Score,
+        penaltyWinner: p.penaltyWinner
       };
     });
 
@@ -829,19 +846,69 @@ app.get('/api/leaderboard', async (req, res) => {
           matchesPlayed++;
           const ap1 = match.team1Score;
           const ap2 = match.team2Score;
+          const apw = match.penaltyWinner;
           const pp1 = pred.team1Score;
           const pp2 = pred.team2Score;
+          const ppw = pred.penaltyWinner;
 
-          if (pp1 === ap1 && pp2 === ap2) {
-            totalPoints += 5;
-            exactScore++;
-          } else if (
-            (pp1 > pp2 && ap1 > ap2) ||
-            (pp1 < pp2 && ap1 < ap2) ||
-            (pp1 === pp2 && ap1 === ap2)
-          ) {
-            totalPoints += 3;
-            correctWinner++;
+          if (ap1 === null || ap2 === null) {
+            // Scores not yet updated by admin, do not award any points
+            return;
+          }
+
+          const isKnockout = match.group.length > 1;
+
+          if (isKnockout) {
+            const isExactScore = (pp1 === ap1 && pp2 === ap2);
+            const isPredDraw = (pp1 === pp2);
+            const isActualDraw = (ap1 === ap2);
+            
+            const correctPenaltyWinner = (apw && ppw === apw);
+            const predictedNormalWinForA = (pp1 > pp2);
+            const actualNormalWinForA = (ap1 > ap2);
+            const predictedNormalWinForB = (pp1 < pp2);
+            const actualNormalWinForB = (ap1 < ap2);
+
+            let pts = 0;
+
+            if (!isActualDraw) {
+              if (isExactScore) {
+                pts = 7;
+                exactScore++;
+              } else if ((predictedNormalWinForA && actualNormalWinForA) || (predictedNormalWinForB && actualNormalWinForB)) {
+                pts = 3;
+                correctWinner++;
+              } else {
+                pts = 0;
+              }
+            } else {
+              if (isExactScore && correctPenaltyWinner) {
+                pts = 10;
+                exactScore++;
+              } else if (!isExactScore && correctPenaltyWinner) {
+                pts = 3;
+                correctWinner++;
+              } else if (isExactScore && !correctPenaltyWinner) {
+                pts = 3;
+                exactScore++;
+              } else {
+                pts = 0;
+              }
+            }
+            totalPoints += pts;
+          } else {
+            // Group Stage
+            if (pp1 === ap1 && pp2 === ap2) {
+              totalPoints += 5;
+              exactScore++;
+            } else if (
+              (pp1 > pp2 && ap1 > ap2) ||
+              (pp1 < pp2 && ap1 < ap2) ||
+              (pp1 === pp2 && ap1 === ap2)
+            ) {
+              totalPoints += 3;
+              correctWinner++;
+            }
           }
         }
       });
@@ -1788,7 +1855,7 @@ app.get('/api/standings', async (req, res) => {
 
 
 app.post('/api/admin/matches/update', async (req, res) => {
-  const { username, matchId, team1Score, team2Score, status } = req.body;
+  const { username, matchId, team1Score, team2Score, status, penaltyWinner } = req.body;
   if (!username || matchId === undefined || !status) {
     return res.status(400).json({ success: false, message: "Invalid parameters" });
   }
@@ -1820,6 +1887,12 @@ app.post('/api/admin/matches/update', async (req, res) => {
     match.status = status;
     match.team1Score = (team1Score !== null && team1Score !== undefined && team1Score !== '') ? parseInt(team1Score) : null;
     match.team2Score = (team2Score !== null && team2Score !== undefined && team2Score !== '') ? parseInt(team2Score) : null;
+    
+    if (match.group.length > 1 && match.team1Score !== null && match.team1Score === match.team2Score) {
+      match.penaltyWinner = penaltyWinner || null;
+    } else {
+      match.penaltyWinner = null;
+    }
 
     await match.save();
     return res.json({ success: true, message: "Match updated successfully!" });

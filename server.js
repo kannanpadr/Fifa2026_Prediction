@@ -891,6 +891,9 @@ app.get('/api/leaderboard', async (req, res) => {
               } else if (isExactScore && !correctPenaltyWinner) {
                 pts = 3;
                 exactScore++;
+              } else if (!isPredDraw && ((predictedNormalWinForA && apw === 'team1') || (predictedNormalWinForB && apw === 'team2'))) {
+                pts = 3;
+                correctWinner++;
               } else {
                 pts = 0;
               }

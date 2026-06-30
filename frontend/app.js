@@ -2514,6 +2514,8 @@ async function initAdminPredictionsPage() {
           return { label: 'Correct Pen (Wrong Score)', points: 3, badge: 'badge-winner' };
         } else if (isExactScore && !correctPenaltyWinner) {
           return { label: 'Exact Score (Wrong Pen)', points: 3, badge: 'badge-exact' };
+        } else if (!isPredDraw && ((predictedNormalWinForA && apw === 'team1') || (predictedNormalWinForB && apw === 'team2'))) {
+          return { label: 'Correct Advancing Team', points: 3, badge: 'badge-winner' };
         } else {
           return { label: 'Wrong Outcome', points: 0, badge: 'badge-wrong' };
         }

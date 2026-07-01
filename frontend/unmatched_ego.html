@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unmatched Ego - FIFA World Cup 2026 Prediction Portal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-portal animate-fade-in">
+
+  <!-- Background Player Cutout -->
+  <div class="player-bg-right">
+    <img src="assets/ronaldo_cutout.png" alt="Ronaldo Background">
+  </div>
+
+  <div class="app-container">
+
+    <!-- Global Header -->
+    <header class="global-header">
+      <div class="header-inner">
+        <div class="brand-section">
+          <svg style="width: 38px; height: 38px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#00e676" stroke-width="3" />
+            <path d="M50 15 L50 85 M15 50 L85 50" stroke="#00e676" stroke-width="1.5" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#00e676" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="brand-title">FIFA WORLD CUP <span>2026</span></div>
+            <div class="brand-tagline">Prediction Portal</div>
+          </div>
+        </div>
+
+        <nav class="navbar">
+          <ul class="navbar-nav">
+            <li><a href="index.html" class="navbar-link" id="navDashboard"><span>🏠</span> Dashboard</a></li>
+            <li><a href="schedule.html" class="navbar-link" id="navSchedule"><span>📅</span> Schedule</a></li>
+            <li><a href="prediction.html" class="navbar-link" id="navPredictions"><span>🗳️</span> Predictions</a></li>
+            <li><a href="games.html" class="navbar-link active" id="navGames"><span>🎮</span> Games</a></li>
+            <li><a href="standings.html" class="navbar-link" id="navStandings"><span>🏆</span> Standings</a></li>
+            <li id="navRealPenaltyAdminMenu" style="display: none;"><a href="admin_real_penalty.html" class="navbar-link">⚽ Real Penalty Admin</a></li>
+          </ul>
+        </nav>
+
+        <div class="profile-menu" id="profileTrigger">
+          <div class="profile-trigger">
+            <div class="profile-avatar">J</div>
+            <span class="profile-name">John Doe</span>
+            <span class="profile-arrow">▼</span>
+          </div>
+          <div class="profile-dropdown" id="profileDropdown">
+            <a href="leaderboard.html" class="dropdown-item" id="dropdownLeaderboard">📊 Prediction Leaderboard</a>
+            <a href="winner.html" class="dropdown-item" id="dropdownWinner">👑 Games Leaderboard</a>
+            <a href="settings.html" class="dropdown-item" id="adminSettingsLink" style="display: none;">⚙️ Settings</a>
+            <a href="admin_predictions.html" class="dropdown-item" id="adminPredictionsLink" style="display: none;">📊 Player Predictions</a>
+            <a href="#" class="dropdown-item" id="adminDownloadDbLink" style="display: none;">📥 Download DB (JSON)</a>
+            <a href="admin_real_penalty.html" class="dropdown-item" id="adminRealPenaltyLink" style="display: none;">? Real Penalty Admin</a>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 0.25rem 0;">
+            <a href="login.html" class="dropdown-item logout" id="logoutBtn">🚪 Log Out</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h1 class="page-title" style="margin-bottom: 0.5rem;">Unmatched Ego 😎</h1><br>
+          <p class="page-subtitle">Test your reaction speed. Can you beat the AI?</p>
+        </div>
+        <a href="games.html" class="btn btn-secondary">🔙 Back to Games</a>
+      </div>
+
+      <div class="glass-card" style="text-align: center; padding: 4rem 2rem;">
+        <h2 style="font-family: var(--font-display); font-size: 1.8rem; margin-bottom: 1rem;">Reaction Test</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 1.1rem;" id="gameStatusText">Click the button below to start. Wait for it to turn green, then click as fast as you can!</p>
+
+        <div id="reactionArea" style="width: 100%; max-width: 400px; height: 200px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border: 2px dashed rgba(255,255,255,0.2); border-radius: 16px; cursor: pointer; transition: all 0.2s ease;">
+          <span id="reactionText" style="font-size: 1.5rem; font-weight: bold;">Start Game</span>
+        </div>
+        
+        <div style="margin-top: 2rem; display: flex; justify-content: space-around;">
+          <div>
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Your Time</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: var(--accent-green);" id="playerTime">--</div>
+          </div>
+          <div>
+            <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">AI Target</div>
+            <div style="font-size: 1.5rem; font-weight: bold; color: #ef5350;" id="aiTime">300ms</div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          const reactionArea = document.getElementById('reactionArea');
+          const reactionText = document.getElementById('reactionText');
+          const playerTimeEl = document.getElementById('playerTime');
+          const statusTextEl = document.getElementById('gameStatusText');
+          
+          let gameState = 'idle'; // idle, waiting, ready, finished
+          let timeoutId = null;
+          let startTime = 0;
+          const aiTargetMs = 300;
+
+          reactionArea.addEventListener('click', () => {
+            if (gameState === 'idle' || gameState === 'finished') {
+              // Start game
+              gameState = 'waiting';
+              reactionArea.style.background = '#ef5350';
+              reactionArea.style.borderColor = '#ef5350';
+              reactionText.innerText = 'Wait for Green...';
+              reactionText.style.color = '#fff';
+              statusTextEl.innerText = "Don't click yet!";
+              playerTimeEl.innerText = '--';
+
+              // Random delay between 2 and 5 seconds
+              const delay = Math.floor(Math.random() * 3000) + 2000;
+              timeoutId = setTimeout(() => {
+                gameState = 'ready';
+                reactionArea.style.background = 'var(--accent-green)';
+                reactionArea.style.borderColor = 'var(--accent-green)';
+                reactionText.innerText = 'CLICK NOW!';
+                reactionText.style.color = '#000';
+                statusTextEl.innerText = "Go go go!";
+                startTime = Date.now();
+              }, delay);
+
+            } else if (gameState === 'waiting') {
+              // Clicked too early
+              clearTimeout(timeoutId);
+              gameState = 'finished';
+              reactionArea.style.background = 'rgba(255,255,255,0.05)';
+              reactionArea.style.borderColor = 'rgba(255,255,255,0.2)';
+              reactionText.innerText = 'Too Early! Try Again';
+              reactionText.style.color = '#ef5350';
+              statusTextEl.innerText = "You clicked before green! Your ego got the best of you.";
+              
+            } else if (gameState === 'ready') {
+              // Clicked on green
+              const reactionTime = Date.now() - startTime;
+              gameState = 'finished';
+              
+              reactionArea.style.background = 'rgba(255,255,255,0.05)';
+              reactionArea.style.borderColor = 'rgba(255,255,255,0.2)';
+              reactionText.style.color = '#fff';
+              
+              playerTimeEl.innerText = reactionTime + 'ms';
+              
+              if (reactionTime <= aiTargetMs) {
+                reactionText.innerText = 'You Win! Try Again';
+                statusTextEl.innerText = "Incredible! Your ego is truly unmatched!";
+                window.showToast("You beat the AI! Amazing reaction speed.", 'success');
+              } else {
+                reactionText.innerText = 'You Lose! Try Again';
+                statusTextEl.innerText = "Too slow! The AI wins this round.";
+                window.showToast("You were slower than the AI's 300ms target.", 'error');
+              }
+            }
+          });
+        });
+      </script>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-nav-bar">
+      <a href="index.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">🏠</span>
+        <span class="mobile-nav-text">Dashboard</span>
+      </a>
+      <a href="schedule.html" class="mobile-nav-link">
+        <span class="mobile-nav-icon">📅</span>
+        <span class="mobile-nav-text">Schedule</span>
+      </a>
+      <a href="prediction.html" class="mobile-nav-link" id="mobNavPredictions">
+        <span class="mobile-nav-icon">🗳️</span>
+        <span class="mobile-nav-text">Predict</span>
+      </a>
+      <a href="games.html" class="mobile-nav-link active" id="mobNavGames">
+        <span class="mobile-nav-icon">🎮</span>
+        <span class="mobile-nav-text">Games</span>
+      </a>
+      <a href="standings.html" class="mobile-nav-link" id="mobNavStandings">
+        <span class="mobile-nav-icon">🏆</span>
+        <span class="mobile-nav-text">Standings</span>
+      </a>
+    </div>
+
+  </div>
+
+  <footer class="page-footer">
+    <p>© 2026 • Designed by Kannan</p>
+  </footer>
+
+  <script src="app.js?v=1782476975665"></script>
+</body>
+
+</html>

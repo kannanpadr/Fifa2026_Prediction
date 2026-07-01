@@ -2243,6 +2243,39 @@ async function initGamesPage() {
 
   
 
+
+    // 5. Unmatched Ego
+    const egoCard = document.createElement('div');
+    egoCard.className = 'glass-card interactive-hover';
+    egoCard.style.padding = '1.75rem';
+    egoCard.style.cursor = 'pointer';
+    egoCard.style.border = '1px dashed var(--accent-green)';
+    egoCard.style.display = 'flex';
+    egoCard.style.flexDirection = 'column';
+    egoCard.style.justifyContent = 'space-between';
+    egoCard.addEventListener('click', () => {
+      window.location.href = 'unmatched_ego.html';
+    });
+
+    egoCard.innerHTML = `
+      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 0.5rem; align-items: center;">
+        <span>🏆 Unmatched Ego • Priority 5</span>
+        <span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 0.5rem;">
+        <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(0, 230, 118, 0.4));">😎</span>
+        <div>
+          <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: var(--accent-green); margin-bottom: 2px;">Unmatched Ego</h3>
+          <p style="font-size: 0.75rem; color: var(--text-muted);">Test your reaction speed and prove you're the best!</p>
+        </div>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; justify-content: space-between; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.5rem;">
+        <span>Attempts: Unlimited</span>
+        <span>Status: Available</span>
+      </div>
+    `;
+    grid.appendChild(egoCard);
+
     container.appendChild(grid);
   }
 }

@@ -2240,43 +2240,7 @@ async function initGamesPage() {
     `;
     grid.appendChild(rpCard);
 
-    const rapidFireLocked = status.rapidFire && status.rapidFire.completedToday && !isAdmin;
-    const rapidFireCard = document.createElement('div');
-    rapidFireCard.className = 'glass-card interactive-hover';
-    rapidFireCard.style.padding = '1.75rem';
-    if (rapidFireLocked) {
-      rapidFireCard.style.opacity = '0.6';
-      rapidFireCard.style.cursor = 'not-allowed';
-      rapidFireCard.classList.remove('interactive-hover');
-    } else {
-      rapidFireCard.style.cursor = 'pointer';
-    }
-    rapidFireCard.style.border = '1px solid var(--accent-green)';
-    rapidFireCard.style.display = 'flex';
-    rapidFireCard.style.flexDirection = 'column';
-    rapidFireCard.style.justifyContent = 'space-between';
-    rapidFireCard.addEventListener('click', () => {
-      if (rapidFireLocked) {
-        window.showToast("Rapid Fire is locked! You have already played today.", 'error');
-      } else {
-        window.location.href = 'rapid_fire.html';
-      }
-    });
 
-    rapidFireCard.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-        <span style="background: rgba(0, 230, 118, 0.2); color: var(--accent-green); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⏱️ Rapid Fire</span>
-        ${!rapidFireLocked ? '<span class="badge" style="background-color: var(--accent-green); color: var(--text-dark); font-weight: 700;">PLAY NOW</span>' : '<span style="font-size: 1.2rem;">🔒</span>'}
-      </div>
-      <div>
-        <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: ${rapidFireLocked ? 'var(--text-muted)' : 'var(--accent-green)'}; margin-bottom: 2px;">Min to Win</h3>
-        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; line-height: 1.3;">40 questions in 100 seconds.</p>
-        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6);">
-          <span>Status: ${rapidFireLocked ? 'Completed' : 'Available'}</span>
-        </div>
-      </div>
-    `;
-    grid.appendChild(rapidFireCard);
   
 
     container.appendChild(grid);
